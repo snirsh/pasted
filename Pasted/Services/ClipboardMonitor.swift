@@ -7,7 +7,6 @@ final class ClipboardMonitor {
     private let store: ClipboardStore
     private var timer: Timer?
     private var lastChangeCount: Int
-    private let previewGenerator = PreviewGenerator()
 
     init(store: ClipboardStore) {
         self.store = store
@@ -46,10 +45,14 @@ final class ClipboardMonitor {
         let sourceAppBundleID = frontmostApp?.bundleIdentifier
         let sourceAppName = frontmostApp?.localizedName
 
+        // Generate preview thumbnail before saving so the item is complete
+        let thumbnail = PreviewGenerator().generatePreview(for: contentType, data: rawData)
+
         let item = ClipboardItem(
             contentType: contentType,
             rawData: rawData,
             plainTextContent: plainText,
+            previewThumbnail: thumbnail,
             sourceAppBundleID: sourceAppBundleID,
             sourceAppName: sourceAppName
         )
@@ -58,17 +61,6 @@ final class ClipboardMonitor {
             try store.save(item)
         } catch {
             print("[ClipboardMonitor] Failed to save item: \(error)")
-        }
-
-        // Generate preview thumbnail asynchronously so it does not block the main run loop
-        // during the synchronous checkForChanges call. AppKit drawing APIs require the main
-        // thread, so we use a MainActor Task that yields back to the run loop first.
-        let generator = self.previewGenerator
-        Task { @MainActor in
-            let thumbnail = generator.generatePreview(for: contentType, data: rawData)
-            if let thumbnail {
-                item.previewThumbnail = thumbnail
-            }
         }
     }
 

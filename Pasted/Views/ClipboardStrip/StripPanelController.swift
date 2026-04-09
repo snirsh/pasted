@@ -9,7 +9,6 @@ final class StripPanelController {
     private let pasteService: PasteService
     private let viewModel = StripViewModel()
     private var panel: NSPanel?
-    private var keyMonitor: Any?
 
     var isVisible: Bool {
         panel?.isVisible ?? false
@@ -54,11 +53,9 @@ final class StripPanelController {
             panel.animator().alphaValue = 1
         }
 
-        installKeyMonitor()
     }
 
     func dismiss() {
-        removeKeyMonitor()
         guard let panel else { return }
 
         NSAnimationContext.runAnimationGroup({ context in
@@ -92,42 +89,6 @@ final class StripPanelController {
 
     func selectIndex(_ index: Int) {
         viewModel.select(at: index)
-    }
-
-    // MARK: - Keyboard Monitor
-
-    private func installKeyMonitor() {
-        removeKeyMonitor()
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, self.isVisible else { return event }
-            switch Int(event.keyCode) {
-            case 123: // Left arrow
-                self.selectPrevious()
-                return nil
-            case 124: // Right arrow
-                self.selectNext()
-                return nil
-            case 36: // Return
-                if event.modifierFlags.contains(.shift) {
-                    self.confirmSelectionPlainText()
-                } else {
-                    self.confirmSelection()
-                }
-                return nil
-            case 53: // Escape
-                self.dismiss()
-                return nil
-            default:
-                return event
-            }
-        }
-    }
-
-    private func removeKeyMonitor() {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
-        }
     }
 
     // MARK: - Panel Creation
