@@ -16,6 +16,7 @@ private final class KeyablePanel: NSPanel {
 final class StripPanelController {
     private let store: ClipboardStore
     private let pasteService: PasteService
+    private let modelContext: ModelContext
     private let viewModel = StripViewModel()
     private var panel: NSPanel?
 
@@ -30,9 +31,49 @@ final class StripPanelController {
         panel?.isVisible ?? false
     }
 
-    init(store: ClipboardStore, pasteService: PasteService) {
+    init(store: ClipboardStore, pasteService: PasteService, modelContext: ModelContext) {
         self.store = store
         self.pasteService = pasteService
+        self.modelContext = modelContext
+        setupNotificationObservers()
+    }
+
+    private func setupNotificationObservers() {
+        NotificationCenter.default.addObserver(
+            forName: .pasteAsPlainText, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let item = note.object as? ClipboardItem else { return }
+            Task { @MainActor [weak self] in
+                self?.pasteService.pasteAsPlainText(item)
+                self?.dismiss()
+            }
+        }
+        NotificationCenter.default.addObserver(
+            forName: .createPinboardAndAdd, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let item = note.object as? ClipboardItem else { return }
+            Task { @MainActor [weak self] in
+                self?.promptCreatePinboard(for: item)
+            }
+        }
+    }
+
+    private func promptCreatePinboard(for item: ClipboardItem) {
+        let alert = NSAlert()
+        alert.messageText = "New Pinboard"
+        alert.informativeText = "Enter a name for the new pinboard:"
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        textField.placeholderString = "Name"
+        alert.accessoryView = textField
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let name = textField.stringValue.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        viewModel.createPinboard(name: name)
+        if let board = viewModel.pinboards.last {
+            viewModel.addItem(item, to: board)
+        }
     }
 
     // MARK: - Panel Lifecycle
@@ -46,6 +87,7 @@ final class StripPanelController {
         previousApp = NSWorkspace.shared.frontmostApplication
 
         // Reload items from store each time the strip is shown
+        viewModel.loadPinboards(context: modelContext)
         viewModel.reload(from: store)
         viewModel.selectedIndex = 0
         viewModel.startLiveUpdates()
@@ -86,6 +128,7 @@ final class StripPanelController {
         keyboardManager?.isStripVisible = false
         viewModel.stopLiveUpdates()
         viewModel.searchQuery = SearchQuery()
+        viewModel.isShowingPreview = false
 
         // Restore focus to the app the user was in before opening the strip
         previousApp?.activate()
@@ -124,6 +167,11 @@ final class StripPanelController {
 
     func selectIndex(_ index: Int) {
         viewModel.select(at: index)
+    }
+
+    func togglePreview() {
+        guard viewModel.selectedItem != nil else { return }
+        viewModel.isShowingPreview.toggle()
     }
 
     // MARK: - Panel Creation

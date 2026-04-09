@@ -3,21 +3,16 @@ import AppKit
 
 /// A clipboard card with three zones:
 ///   1. Coloured banner  — app brand colour, content type, timestamp, app icon
-///   2. Dark content     — text preview / image fill
+///   2. Dark content     — text preview / image fill / specialised type view
 ///   3. Footer bar       — char count / image dimensions + position index
 struct ClipboardItemPreview: View {
     let item: ClipboardItem
     var position: Int = 0
     var totalCount: Int = 0
+    /// Active search text for highlighting; empty string = no highlight.
+    var searchText: String = ""
 
     @AppStorage("previewTextSize") private var previewTextSize: Double = 13.0
-
-    // MARK: - Layout constants
-    private let bannerHeight:  CGFloat = 56
-    private let footerHeight:  CGFloat = 30
-    private let cardWidth:     CGFloat = 200
-
-    // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,7 +20,7 @@ struct ClipboardItemPreview: View {
             contentArea
             footer
         }
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Layout.cardCornerRadius))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityHint("Press Return to paste, Shift+Return for plain text")
@@ -38,28 +33,26 @@ struct ClipboardItemPreview: View {
             AppBrandColor.color(for: item.sourceAppBundleID)
 
             HStack(alignment: .center, spacing: 0) {
-                // Type + timestamp
                 VStack(alignment: .leading, spacing: 2) {
                     Text(contentTypeLabel)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(DesignTokens.Typography.bannerTitle)
                         .foregroundStyle(.white)
                         .lineLimit(1)
 
                     Text(relativeTime(from: item.capturedAt))
-                        .font(.system(size: 11, weight: .regular))
+                        .font(DesignTokens.Typography.bannerSub)
                         .foregroundStyle(.white.opacity(0.75))
                         .lineLimit(1)
                 }
-                .padding(.leading, 10)
+                .padding(.leading, DesignTokens.Layout.cardPadding)
 
                 Spacer()
 
-                // App icon
                 appIconView
-                    .padding(.trailing, 10)
+                    .padding(.trailing, DesignTokens.Layout.cardPadding)
             }
         }
-        .frame(height: bannerHeight)
+        .frame(height: DesignTokens.Layout.bannerHeight)
     }
 
     @ViewBuilder
@@ -68,15 +61,14 @@ struct ClipboardItemPreview: View {
             Image(nsImage: nsImage)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .frame(width: DesignTokens.Layout.appIconSize, height: DesignTokens.Layout.appIconSize)
+                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Layout.appIconCornerRadius))
                 .shadow(color: .black.opacity(0.35), radius: 3, x: 0, y: 1)
         } else {
-            // Fallback: first letter of app name on frosted rounded square
             ZStack {
-                RoundedRectangle(cornerRadius: 9)
+                RoundedRectangle(cornerRadius: DesignTokens.Layout.appIconCornerRadius)
                     .fill(.white.opacity(0.25))
-                    .frame(width: 40, height: 40)
+                    .frame(width: DesignTokens.Layout.appIconSize, height: DesignTokens.Layout.appIconSize)
                 Text(item.sourceAppName?.prefix(1).uppercased() ?? "?")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(.white)
@@ -88,69 +80,95 @@ struct ClipboardItemPreview: View {
 
     private var contentArea: some View {
         ZStack {
-            Color(red: 0.13, green: 0.13, blue: 0.15)
+            DesignTokens.Colors.cardContentBg
             contentPreview
-                .padding(10)
+                .padding(DesignTokens.Layout.cardPadding)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
     private var contentPreview: some View {
-        if let thumbnailData = item.previewThumbnail,
-           let nsImage = NSImage(data: thumbnailData) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-        } else {
-            fallbackContent
-        }
-    }
-
-    @ViewBuilder
-    private var fallbackContent: some View {
         switch item.contentType {
+        case .color:
+            colorContent
+        case .url:
+            LinkCardContent(urlString: item.plainTextContent ?? "")
+        case .image:
+            imageContent
         case .text, .richText:
             textContent
-
-        case .url:
-            urlContent
-
-        case .image:
-            // No thumbnail generated yet — show placeholder
-            iconContent(systemName: "photo", tint: .white.opacity(0.35))
-
         case .file:
             iconContent(systemName: "doc", tint: .white.opacity(0.35))
         }
     }
 
-    private var textContent: some View {
-        Text(String((item.plainTextContent ?? "").prefix(400)))
-            .font(.system(size: previewTextSize, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.9))
-            .lineLimit(8)
-            .multilineTextAlignment(.leading)
-            .truncationMode(.tail)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
+    // MARK: - Text content (with code detection + search highlight)
 
-    private var urlContent: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "link")
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(Color(hex: 0x5AC8FA))
-            if let text = item.plainTextContent {
-                Text(text)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .lineLimit(5)
-                    .multilineTextAlignment(.center)
+    private var textContent: some View {
+        let raw = String((item.plainTextContent ?? "").prefix(400))
+        let isCode = CodeDetector.isCode(raw)
+        let font: Font = isCode
+            ? .system(size: previewTextSize, design: .monospaced)
+            : .system(size: previewTextSize)
+
+        return Group {
+            if searchText.isEmpty {
+                Text(raw)
+                    .font(font)
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(8)
+                    .multilineTextAlignment(.leading)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                Text(TextHighlighter.highlight(raw, query: searchText, highlightColor: DesignTokens.Colors.searchHighlight))
+                    .font(font)
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(8)
+                    .multilineTextAlignment(.leading)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    // MARK: - Image content (with checkerboard for transparency)
+
+    @ViewBuilder
+    private var imageContent: some View {
+        if let thumbnailData = item.previewThumbnail,
+           let nsImage = NSImage(data: thumbnailData) {
+            ZStack {
+                if item.hasAlpha {
+                    CheckerboardView()
+                }
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            }
+        } else {
+            iconContent(systemName: "photo", tint: .white.opacity(0.35))
+        }
+    }
+
+    // MARK: - Color content (swatch + hex)
+
+    private var colorContent: some View {
+        VStack(spacing: 6) {
+            if let hex = item.plainTextContent, let color = Color(hexString: hex) {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(color)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                    )
+                Text(hex)
+                    .font(DesignTokens.Typography.metadataMono)
+                    .foregroundStyle(.white.opacity(0.8))
+            } else {
+                iconContent(systemName: "paintpalette", tint: DesignTokens.Colors.colorType)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -168,7 +186,7 @@ struct ClipboardItemPreview: View {
     private var footer: some View {
         HStack {
             Text(metadataLabel)
-                .font(.system(size: 11))
+                .font(DesignTokens.Typography.metadata)
                 .foregroundStyle(.white.opacity(0.45))
                 .lineLimit(1)
 
@@ -176,13 +194,13 @@ struct ClipboardItemPreview: View {
 
             if position > 0 {
                 Text("\(position)")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(DesignTokens.Typography.cardBadgeMed)
                     .foregroundStyle(.white.opacity(0.45))
             }
         }
-        .padding(.horizontal, 10)
-        .frame(height: footerHeight)
-        .background(Color(red: 0.16, green: 0.16, blue: 0.18))
+        .padding(.horizontal, DesignTokens.Layout.cardPadding)
+        .frame(height: DesignTokens.Layout.footerHeight)
+        .background(DesignTokens.Colors.cardFooterBg)
     }
 
     // MARK: - Helpers
@@ -194,14 +212,17 @@ struct ClipboardItemPreview: View {
         case .image:    return "Image"
         case .url:      return "Link"
         case .file:     return "File"
+        case .color:    return "Color"
         }
     }
 
     private var metadataLabel: String {
         switch item.contentType {
+        case .color:
+            return item.plainTextContent ?? "Color"
         case .image:
-            if let data = item.previewThumbnail ?? (item.contentType == .image ? item.rawData : nil),
-               let img = NSImage(data: data) {
+            let imageData = item.previewThumbnail ?? item.rawData
+            if let img = NSImage(data: imageData) {
                 let s = img.size
                 return "\(Int(s.width)) × \(Int(s.height))"
             }
@@ -235,16 +256,5 @@ struct ClipboardItemPreview: View {
         if let app = item.sourceAppName { parts.append("from \(app)") }
         parts.append(relativeTime(from: item.capturedAt))
         return parts.joined(separator: ", ")
-    }
-}
-
-// MARK: - Color hex init (local to this file via extension in AppBrandColor.swift)
-private extension Color {
-    init(hex: UInt32) {
-        self.init(
-            red:   Double((hex >> 16) & 0xFF) / 255,
-            green: Double((hex >> 8)  & 0xFF) / 255,
-            blue:  Double( hex        & 0xFF) / 255
-        )
     }
 }

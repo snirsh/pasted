@@ -52,14 +52,6 @@ enum AppBrandColor {
 private extension Color {
     static let defaultBrand = Color(hex: 0x3A3A4C)
 
-    init(hex: UInt32) {
-        self.init(
-            red:   Double((hex >> 16) & 0xFF) / 255,
-            green: Double((hex >> 8)  & 0xFF) / 255,
-            blue:  Double( hex        & 0xFF) / 255
-        )
-    }
-
     func darker(by amount: Double = 0.25) -> Color {
         let ui = NSColor(self)
         guard let rgb = ui.usingColorSpace(.sRGB) else { return self }
