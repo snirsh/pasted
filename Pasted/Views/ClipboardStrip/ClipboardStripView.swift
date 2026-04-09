@@ -46,11 +46,7 @@ struct ClipboardStripView: View {
                             )
                             .id(index)
                             .contentShape(Rectangle())
-                            .onTapGesture(count: 2) {
-                                viewModel.select(at: index)
-                                onPaste(item)
-                            }
-                            .onTapGesture(count: 1) {
+                            .onTapGesture {
                                 viewModel.select(at: index)
                             }
                     }
