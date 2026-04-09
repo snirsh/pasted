@@ -49,6 +49,7 @@ struct SyncPreferencesView: View {
             }
         }
         .formStyle(.grouped)
+        .frame(width: 450, height: 400)
     }
 
     // MARK: - Subviews

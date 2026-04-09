@@ -10,6 +10,8 @@ struct ClipboardItemPreview: View {
     var position: Int = 0
     var totalCount: Int = 0
 
+    @AppStorage("previewTextSize") private var previewTextSize: Double = 13.0
+
     // MARK: - Layout constants
     private let bannerHeight:  CGFloat = 56
     private let footerHeight:  CGFloat = 30
@@ -125,7 +127,7 @@ struct ClipboardItemPreview: View {
 
     private var textContent: some View {
         Text(String((item.plainTextContent ?? "").prefix(400)))
-            .font(.system(size: 15, design: .monospaced))
+            .font(.system(size: previewTextSize, design: .monospaced))
             .foregroundStyle(.white.opacity(0.9))
             .lineLimit(8)
             .multilineTextAlignment(.leading)

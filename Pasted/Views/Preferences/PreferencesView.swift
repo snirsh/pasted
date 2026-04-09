@@ -80,7 +80,6 @@ struct PreferencesView: View {
         }
         .formStyle(.grouped)
         .frame(width: 450, height: 380)
-        .navigationTitle("Preferences")
         .onAppear {
             refreshStorageUsage()
         }

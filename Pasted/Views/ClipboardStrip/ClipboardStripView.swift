@@ -8,6 +8,8 @@ struct ClipboardStripView: View {
     var onPaste: (ClipboardItem) -> Void
     var onDismiss: () -> Void
 
+    @AppStorage("cardSizeScale") private var cardSizeScale: Double = 1.0
+
     var body: some View {
         VStack(spacing: 0) {
             SearchBarView(
@@ -45,7 +47,13 @@ struct ClipboardStripView: View {
                 LazyHStack(spacing: 10) {
                     ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
                         ClipboardItemPreview(item: item, position: index + 1, totalCount: viewModel.items.count)
-                            .frame(width: 200, height: 236)
+                            .frame(width: 200 * cardSizeScale, height: 240)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(viewModel.selectedIndex == index
+                                          ? Color.accentColor.opacity(0.2)
+                                          : Color.clear)
+                            )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .strokeBorder(
