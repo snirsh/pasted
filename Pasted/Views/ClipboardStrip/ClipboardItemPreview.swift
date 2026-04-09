@@ -7,12 +7,14 @@ struct ClipboardItemPreview: View {
     var position: Int = 0
     var totalCount: Int = 0
 
+    @AppStorage("previewTextSize") private var previewTextSize: Double = 13.0
+
     var body: some View {
         VStack(spacing: 4) {
             // Preview area
             ZStack(alignment: .topTrailing) {
                 previewContent
-                    .frame(width: 184, height: 170)
+                    .frame(maxWidth: .infinity, minHeight: 170, maxHeight: 170)
                     .clipped()
                     .cornerRadius(6)
 
@@ -25,7 +27,7 @@ struct ClipboardItemPreview: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .padding(4)
             }
-            .frame(width: 184, height: 170)
+            .frame(maxWidth: .infinity, minHeight: 170, maxHeight: 170)
 
             // Metadata area: ~40pt
             VStack(spacing: 2) {
@@ -87,7 +89,7 @@ struct ClipboardItemPreview: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let text = item.plainTextContent {
                     Text(String(text.prefix(500)))
-                        .font(.system(size: 13, design: .monospaced))
+                        .font(.system(size: previewTextSize, design: .monospaced))
                         .foregroundColor(.white.opacity(0.85))
                         .lineLimit(12)
                         .multilineTextAlignment(.leading)

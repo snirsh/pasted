@@ -63,7 +63,17 @@ struct PastedApp: App {
         }
 
         Settings {
-            PreferencesView()
+            TabView {
+                PreferencesView()
+                    .tabItem { Label("General", systemImage: "gear") }
+                AppearancePreferencesView()
+                    .tabItem { Label("Appearance", systemImage: "paintbrush") }
+                PrivacyPreferencesView()
+                    .tabItem { Label("Privacy", systemImage: "hand.raised") }
+                SyncPreferencesView()
+                    .tabItem { Label("Sync", systemImage: "icloud") }
+            }
+            .modelContainer(sharedModelContainer)
         }
     }
 }

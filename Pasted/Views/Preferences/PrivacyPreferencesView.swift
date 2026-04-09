@@ -98,7 +98,6 @@ struct PrivacyPreferencesView: View {
         }
         .formStyle(.grouped)
         .frame(width: 500, height: 450)
-        .navigationTitle("Privacy")
         .sheet(isPresented: $showingAppPicker) {
             AppPickerView { bundleID, displayName, iconData in
                 addExclusion(bundleID: bundleID, displayName: displayName, iconData: iconData)
