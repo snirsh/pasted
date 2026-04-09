@@ -103,6 +103,8 @@ final class ClipboardStore {
             if batch.isEmpty { break }
 
             for item in batch {
+                // Never auto-prune items that belong to a pinboard
+                guard item.pinboardEntries.isEmpty else { continue }
                 remainingToFree -= item.byteSize
                 modelContext.delete(item)
                 if remainingToFree <= 0 { break }
