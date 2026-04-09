@@ -6,7 +6,13 @@ struct PastedApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([ClipboardItem.self])
+        let schema = Schema([
+            ClipboardItem.self,
+            OCRResult.self,
+            AppExclusion.self,
+            SyncState.self,
+            DeviceInfo.self
+        ])
 
         // Store at ~/Library/Application Support/Pasted/default.store
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

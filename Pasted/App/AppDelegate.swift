@@ -9,13 +9,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var stripPanel: StripPanelController?
     private var clipboardStore: ClipboardStore?
     private var pasteService: PasteService?
+    private var syncEngine: SyncEngine?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         requestAccessibilityPermission()
         configureLaunchAtLogin()
 
         // Initialize services once model container is available
-        if let container = try? ModelContainer(for: ClipboardItem.self) {
+        if let container = try? ModelContainer(
+            for: ClipboardItem.self, SyncState.self, DeviceInfo.self
+        ) {
             let context = ModelContext(container)
             clipboardStore = ClipboardStore(modelContext: context)
 
@@ -31,12 +34,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 pasteService: pasteService!
             )
             keyboardShortcutManager?.registerShortcuts()
+
+            // Initialize iCloud sync engine (003-icloud-sync)
+            configureSyncEngine(modelContext: context)
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         clipboardMonitor?.stopMonitoring()
         keyboardShortcutManager?.unregisterShortcuts()
+        syncEngine?.stopSync()
     }
 
     func toggleStrip() {
@@ -64,6 +71,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } catch {
             print("[AppDelegate] Launch at login configuration failed: \(error)")
+        }
+    }
+
+    // MARK: - iCloud Sync (003-icloud-sync)
+
+    /// Initializes the sync engine and observes settings changes.
+    private func configureSyncEngine(modelContext: ModelContext) {
+        syncEngine = SyncEngine(modelContext: modelContext)
+
+        // Observe sync settings toggle from SyncPreferencesView
+        NotificationCenter.default.addObserver(
+            forName: .syncSettingsChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.handleSyncSettingsChanged()
+            }
+        }
+
+        // Start sync if already enabled
+        if UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") {
+            Task {
+                await syncEngine?.startSync()
+            }
+        }
+    }
+
+    private func handleSyncSettingsChanged() {
+        if UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") {
+            Task {
+                await syncEngine?.startSync()
+            }
+        } else {
+            syncEngine?.stopSync()
         }
     }
 }
