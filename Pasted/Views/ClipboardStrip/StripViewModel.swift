@@ -47,8 +47,13 @@ final class StripViewModel: ObservableObject {
             let newItems = try store.fetchRecent(limit: 200)
             // Only update if items actually changed to avoid unnecessary SwiftUI redraws
             if newItems.map(\.id) != items.map(\.id) {
+                // Remember which item was selected so we can re-find it after reorder
+                let selectedID = selectedItem?.id
                 items = newItems
-                if selectedIndex >= items.count {
+                if let id = selectedID,
+                   let newIndex = items.firstIndex(where: { $0.id == id }) {
+                    selectedIndex = newIndex
+                } else if selectedIndex >= items.count {
                     selectedIndex = max(0, items.count - 1)
                 }
             }

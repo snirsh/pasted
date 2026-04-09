@@ -10,6 +10,9 @@ final class StripPanelController {
     private let viewModel = StripViewModel()
     private var panel: NSPanel?
 
+    /// Back-reference to the keyboard manager so we can update its visibility cache.
+    weak var keyboardManager: KeyboardShortcutManager?
+
     var isVisible: Bool {
         panel?.isVisible ?? false
     }
@@ -43,6 +46,7 @@ final class StripPanelController {
         startFrame.origin.y -= 20
         panel.setFrame(startFrame, display: false)
         panel.alphaValue = 0
+        keyboardManager?.isStripVisible = true
         panel.orderFrontRegardless()
 
         NSAnimationContext.runAnimationGroup { context in
@@ -57,6 +61,7 @@ final class StripPanelController {
     }
 
     func dismiss() {
+        keyboardManager?.isStripVisible = false
         viewModel.stopLiveUpdates()
         guard let panel else { return }
 

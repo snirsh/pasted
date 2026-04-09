@@ -8,6 +8,10 @@ import CoreGraphics
 private var sharedManager: KeyboardShortcutManager?
 
 /// C-compatible callback for the CGEvent tap.
+/// IMPORTANT: Keep this callback as lightweight as possible — the system disables
+/// the tap if the callback takes >1s. Never block on the main actor here; use
+/// DispatchQueue.main.async for all state mutations and read only
+/// nonisolated(unsafe) fields directly.
 private func eventTapCallback(
     proxy: CGEventTapProxy,
     type: CGEventType,
@@ -42,35 +46,34 @@ private func eventTapCallback(
     }
 
     // --- Strip-visible-only shortcuts ---
-    // Only intercept keys when the strip overlay is showing.
-    var consumed = false
-    MainActor.assumeIsolated {
-        if manager.stripPanel.isVisible {
-            switch keyCode {
-            case 123: // Left arrow
-                manager.stripPanel.selectPrevious()
-                consumed = true
-            case 124: // Right arrow
-                manager.stripPanel.selectNext()
-                consumed = true
-            case 36: // Return
-                if hasShift {
-                    manager.stripPanel.confirmSelectionPlainText()
-                } else {
-                    manager.stripPanel.confirmSelection()
-                }
-                consumed = true
-            case 53: // Escape
-                manager.stripPanel.dismiss()
-                consumed = true
-            default:
-                break
+    // Read the cached visibility flag — no actor isolation needed.
+    guard manager.isStripVisible else {
+        return Unmanaged.passRetained(event)
+    }
+
+    switch keyCode {
+    case 123: // Left arrow
+        DispatchQueue.main.async { manager.stripPanel.selectPrevious() }
+        return nil
+    case 124: // Right arrow
+        DispatchQueue.main.async { manager.stripPanel.selectNext() }
+        return nil
+    case 36: // Return
+        let shift = hasShift
+        DispatchQueue.main.async {
+            if shift {
+                manager.stripPanel.confirmSelectionPlainText()
+            } else {
+                manager.stripPanel.confirmSelection()
             }
         }
+        return nil
+    case 53: // Escape
+        DispatchQueue.main.async { manager.stripPanel.dismiss() }
+        return nil
+    default:
+        return Unmanaged.passRetained(event)
     }
-    if consumed { return nil }
-
-    return Unmanaged.passRetained(event)
 }
 
 // MARK: - KeyboardShortcutManager
@@ -84,6 +87,10 @@ final class KeyboardShortcutManager {
 
     /// The underlying CGEvent tap. Exposed internally for the callback to re-enable if needed.
     nonisolated(unsafe) var eventTap: CFMachPort?
+
+    /// Cached strip visibility — written on the main actor, read by the CGEvent callback
+    /// without actor isolation so the callback never stalls waiting for the main actor.
+    nonisolated(unsafe) var isStripVisible: Bool = false
     private var runLoopSource: CFRunLoopSource?
     private var retryCount: Int = 0
     private static let maxRetries = 5
