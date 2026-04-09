@@ -1,177 +1,246 @@
 import SwiftUI
+import AppKit
 
-/// A single preview card for a clipboard item, showing a visual thumbnail,
-/// content type badge, source app name, and relative timestamp.
+/// A clipboard card with three zones:
+///   1. Coloured banner  — app brand colour, content type, timestamp, app icon
+///   2. Dark content     — text preview / image fill
+///   3. Footer bar       — char count / image dimensions + position index
 struct ClipboardItemPreview: View {
     let item: ClipboardItem
     var position: Int = 0
     var totalCount: Int = 0
 
+    // MARK: - Layout constants
+    private let bannerHeight:  CGFloat = 56
+    private let footerHeight:  CGFloat = 30
+    private let cardWidth:     CGFloat = 200
+
+    // MARK: - Body
+
     var body: some View {
-        VStack(spacing: 4) {
-            // Preview area
-            ZStack(alignment: .topTrailing) {
-                previewContent
-                    .frame(width: 184, height: 170)
-                    .clipped()
-                    .cornerRadius(6)
-
-                // Content type badge
-                Image(systemName: iconName(for: item.contentType))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .padding(5)
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .padding(4)
-            }
-            .frame(width: 184, height: 170)
-
-            // Metadata area: ~40pt
-            VStack(spacing: 2) {
-                Text(item.sourceAppName ?? "Unknown")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                Text(relativeTime(from: item.capturedAt))
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
+        VStack(spacing: 0) {
+            banner
+            contentArea
+            footer
         }
-        .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(nsColor: .controlBackgroundColor))
-                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-        )
+        .clipShape(RoundedRectangle(cornerRadius: 10))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityHint("Press Return to paste, Shift Return for plain text")
+        .accessibilityHint("Press Return to paste, Shift+Return for plain text")
     }
 
-    // MARK: - Preview Content
+    // MARK: - Banner
+
+    private var banner: some View {
+        ZStack {
+            AppBrandColor.color(for: item.sourceAppBundleID)
+
+            HStack(alignment: .center, spacing: 0) {
+                // Type + timestamp
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(contentTypeLabel)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+
+                    Text(relativeTime(from: item.capturedAt))
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .lineLimit(1)
+                }
+                .padding(.leading, 10)
+
+                Spacer()
+
+                // App icon
+                appIconView
+                    .padding(.trailing, 10)
+            }
+        }
+        .frame(height: bannerHeight)
+    }
 
     @ViewBuilder
-    private var previewContent: some View {
+    private var appIconView: some View {
+        if let nsImage = AppIconCache.shared.icon(for: item.sourceAppBundleID) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 36, height: 36)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        } else {
+            // Fallback circle with first letter of app name
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(.white.opacity(0.25))
+                    .frame(width: 36, height: 36)
+                Text(item.sourceAppName?.prefix(1).uppercased() ?? "?")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+        }
+    }
+
+    // MARK: - Content area
+
+    private var contentArea: some View {
+        ZStack {
+            Color(red: 0.13, green: 0.13, blue: 0.15)
+            contentPreview
+                .padding(10)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var contentPreview: some View {
         if let thumbnailData = item.previewThumbnail,
            let nsImage = NSImage(data: thumbnailData) {
             Image(nsImage: nsImage)
                 .resizable()
-                .aspectRatio(contentMode: .fill)
+                .aspectRatio(contentMode: .fit)
         } else {
-            fallbackPreview
+            fallbackContent
         }
     }
 
     @ViewBuilder
-    private var fallbackPreview: some View {
+    private var fallbackContent: some View {
         switch item.contentType {
-        case .text:
-            textFallback
-        case .richText:
-            textFallback
+        case .text, .richText:
+            textContent
+
         case .url:
-            urlFallback
-        default:
-            iconFallback
+            urlContent
+
+        case .image:
+            // No thumbnail generated yet — show placeholder
+            iconContent(systemName: "photo", tint: .white.opacity(0.35))
+
+        case .file:
+            iconContent(systemName: "doc", tint: .white.opacity(0.35))
         }
     }
 
-    private var textFallback: some View {
-        ZStack {
-            Color.white.opacity(0.08)
-            VStack(alignment: .leading, spacing: 2) {
-                if let text = item.plainTextContent {
-                    Text(String(text.prefix(500)))
-                        .font(.system(size: 13, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.85))
-                        .lineLimit(12)
-                        .multilineTextAlignment(.leading)
-                } else {
-                    Image(systemName: iconName(for: item.contentType))
-                        .font(.title2)
-                        .foregroundStyle(.white.opacity(0.4))
-                }
+    private var textContent: some View {
+        GeometryReader { geo in
+            ScrollView {
+                Text(String((item.plainTextContent ?? "").prefix(800)))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+                    .frame(width: geo.size.width, alignment: .topLeading)
             }
-            .padding(8)
+            .disabled(true)
         }
     }
 
-    private var urlFallback: some View {
-        ZStack {
-            Color.white.opacity(0.08)
-            VStack(spacing: 6) {
-                Image(systemName: "link")
-                    .font(.title2)
-                    .foregroundStyle(.blue)
-                if let text = item.plainTextContent {
-                    Text(text)
-                        .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.7))
-                        .lineLimit(4)
-                        .multilineTextAlignment(.center)
-                }
+    private var urlContent: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "link")
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(Color(hex: 0x5AC8FA))
+            if let text = item.plainTextContent {
+                Text(text)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineLimit(5)
+                    .multilineTextAlignment(.center)
             }
-            .padding(8)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var iconFallback: some View {
-        ZStack {
-            Color.white.opacity(0.08)
-            Image(systemName: iconName(for: item.contentType))
-                .font(.system(size: 36))
+    private func iconContent(systemName: String, tint: Color) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 32))
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Footer
+
+    private var footer: some View {
+        HStack {
+            Text(metadataLabel)
+                .font(.system(size: 10))
                 .foregroundStyle(.white.opacity(0.4))
+                .lineLimit(1)
+
+            Spacer()
+
+            if position > 0 {
+                Text("\(position)")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
         }
+        .padding(.horizontal, 10)
+        .frame(height: footerHeight)
+        .background(Color(red: 0.16, green: 0.16, blue: 0.18))
     }
 
     // MARK: - Helpers
 
-    private func iconName(for contentType: ContentType) -> String {
-        switch contentType {
-        case .text:      return "doc.text"
-        case .richText:  return "doc.richtext"
-        case .image:     return "photo"
-        case .url:       return "link"
-        case .file:      return "doc"
+    private var contentTypeLabel: String {
+        switch item.contentType {
+        case .text:     return "Text"
+        case .richText: return "Rich Text"
+        case .image:    return "Image"
+        case .url:      return "Link"
+        case .file:     return "File"
+        }
+    }
+
+    private var metadataLabel: String {
+        switch item.contentType {
+        case .image:
+            if let data = item.previewThumbnail ?? (item.contentType == .image ? item.rawData : nil),
+               let img = NSImage(data: data) {
+                let s = img.size
+                return "\(Int(s.width)) × \(Int(s.height))"
+            }
+            return "Image"
+        case .text, .richText, .url:
+            if let count = item.plainTextContent?.count {
+                return count == 1 ? "1 character" : "\(count.formatted()) characters"
+            }
+            return ""
+        case .file:
+            return "File"
         }
     }
 
     private func relativeTime(from date: Date) -> String {
         let interval = Date().timeIntervalSince(date)
         switch interval {
-        case ..<60:
-            return "just now"
-        case ..<3600:
-            let minutes = Int(interval / 60)
-            return "\(minutes)m ago"
-        case ..<86400:
-            let hours = Int(interval / 3600)
-            return "\(hours)h ago"
-        default:
-            let days = Int(interval / 86400)
-            return "\(days)d ago"
+        case ..<5:      return "just now"
+        case ..<60:     return "\(Int(interval))s ago"
+        case ..<3600:   return "\(Int(interval / 60))m ago"
+        case ..<86400:  return "\(Int(interval / 3600))h ago"
+        default:        return "\(Int(interval / 86400))d ago"
         }
     }
 
     private var accessibilityDescription: String {
         var parts: [String] = []
-        if position > 0 && totalCount > 0 {
-            parts.append("Item \(position) of \(totalCount)")
-        }
-        parts.append(item.contentType.rawValue)
-        if let text = item.plainTextContent {
-            let snippet = String(text.prefix(50))
-            parts.append(snippet)
-        }
-        if let app = item.sourceAppName {
-            parts.append("from \(app)")
-        }
+        if position > 0 { parts.append("Item \(position) of \(totalCount)") }
+        parts.append(contentTypeLabel)
+        if let text = item.plainTextContent { parts.append(String(text.prefix(50))) }
+        if let app = item.sourceAppName { parts.append("from \(app)") }
         parts.append(relativeTime(from: item.capturedAt))
         return parts.joined(separator: ", ")
+    }
+}
+
+// MARK: - Color hex init (local to this file via extension in AppBrandColor.swift)
+private extension Color {
+    init(hex: UInt32) {
+        self.init(
+            red:   Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8)  & 0xFF) / 255,
+            blue:  Double( hex        & 0xFF) / 255
+        )
     }
 }

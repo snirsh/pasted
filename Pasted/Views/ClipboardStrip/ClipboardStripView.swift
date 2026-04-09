@@ -32,17 +32,11 @@ struct ClipboardStripView: View {
                     ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
                         ClipboardItemPreview(item: item, position: index + 1, totalCount: viewModel.items.count)
                             .frame(width: 200, height: 240)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(viewModel.selectedIndex == index
-                                          ? Color.accentColor.opacity(0.2)
-                                          : Color.clear)
-                            )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 8)
+                                RoundedRectangle(cornerRadius: 10)
                                     .stroke(viewModel.selectedIndex == index
                                             ? Color.accentColor
-                                            : Color.clear, lineWidth: 2.5)
+                                            : Color.clear, lineWidth: 3)
                             )
                             .id(index)
                             .contentShape(Rectangle())
