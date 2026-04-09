@@ -28,7 +28,9 @@ final class PreviewGenerator {
         case .image:
             return generateImagePreview(data: data)
         case .url:
-            return generateURLPreview(data: data)
+            return nil // URL cards render live via LinkCardContent
+        case .color:
+            return nil // Color cards render live as a swatch
         case .file:
             return generateFilePreview(data: data)
         }

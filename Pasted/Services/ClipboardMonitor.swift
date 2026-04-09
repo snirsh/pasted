@@ -46,22 +46,26 @@ final class ClipboardMonitor {
         guard currentChangeCount != lastChangeCount else { return }
         lastChangeCount = currentChangeCount
 
-        // Skip changes we caused (e.g., pasting an item writes to the pasteboard)
         if skipNextChange {
             skipNextChange = false
             return
         }
 
-        guard let (contentType, rawData) = extractContent(from: pasteboard) else { return }
+        guard let (contentType, rawData, hasAlpha) = extractContent(from: pasteboard) else { return }
 
-        let plainText = derivePlainText(from: pasteboard, contentType: contentType)
+        let plainText = derivePlainText(from: pasteboard, contentType: contentType, rawData: rawData)
 
         let frontmostApp = NSWorkspace.shared.frontmostApplication
         let sourceAppBundleID = frontmostApp?.bundleIdentifier
         let sourceAppName = frontmostApp?.localizedName
 
-        // Generate preview thumbnail before saving so the item is complete
-        let thumbnail = PreviewGenerator().generatePreview(for: contentType, data: rawData)
+        // URL and color items don't need JPEG thumbnails — they render live
+        let thumbnail: Data?
+        if contentType == .url || contentType == .color {
+            thumbnail = nil
+        } else {
+            thumbnail = PreviewGenerator().generatePreview(for: contentType, data: rawData)
+        }
 
         let item = ClipboardItem(
             contentType: contentType,
@@ -69,7 +73,8 @@ final class ClipboardMonitor {
             plainTextContent: plainText,
             previewThumbnail: thumbnail,
             sourceAppBundleID: sourceAppBundleID,
-            sourceAppName: sourceAppName
+            sourceAppName: sourceAppName,
+            hasAlpha: hasAlpha
         )
 
         do {
@@ -81,52 +86,89 @@ final class ClipboardMonitor {
 
     // MARK: - Content Extraction
 
-    /// Extracts the highest-priority content type and its raw data from the pasteboard.
-    /// Priority: image > richText > url > file > text.
-    private func extractContent(from pasteboard: NSPasteboard) -> (ContentType, Data)? {
+    /// Extracts the highest-priority content type, raw data, and alpha flag from the pasteboard.
+    /// Priority: color > image > richText > url > file > text.
+    private func extractContent(from pasteboard: NSPasteboard) -> (ContentType, Data, Bool)? {
         let types = pasteboard.types ?? []
+
+        // Color (com.apple.color-pb) — checked before image to avoid NSColor being
+        // misclassified as binary data
+        let colorPBType = NSPasteboard.PasteboardType("com.apple.color-pb")
+        if types.contains(colorPBType),
+           let colorData = pasteboard.data(forType: colorPBType),
+           let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData),
+           let hex = hexString(from: nsColor) {
+            // Store hex as raw data so it pastes as plain text
+            let hexData = Data(hex.utf8)
+            return (.color, hexData, false)
+        }
 
         // Image (public.tiff, public.png)
         if types.contains(.tiff), let data = pasteboard.data(forType: .tiff) {
-            return (.image, data)
+            let alpha = imageHasAlpha(data: data, type: .tiff)
+            return (.image, data, alpha)
         }
         if types.contains(.png), let data = pasteboard.data(forType: .png) {
-            return (.image, data)
+            let alpha = imageHasAlpha(data: data, type: .png)
+            return (.image, data, alpha)
         }
 
         // Rich text (public.rtf, public.html)
         if types.contains(.rtf), let data = pasteboard.data(forType: .rtf) {
-            return (.richText, data)
+            return (.richText, data, false)
         }
         if types.contains(.html), let data = pasteboard.data(forType: .html) {
-            return (.richText, data)
+            return (.richText, data, false)
         }
 
         // URL (public.url)
         if types.contains(.URL), let data = pasteboard.data(forType: .URL) {
-            return (.url, data)
+            return (.url, data, false)
         }
 
         // File URL (public.file-url)
         if types.contains(.fileURL), let data = pasteboard.data(forType: .fileURL) {
-            return (.file, data)
+            return (.file, data, false)
         }
 
         // Plain text (public.utf8-plain-text)
         if types.contains(.string), let data = pasteboard.data(forType: .string) {
-            return (.text, data)
+            return (.text, data, false)
         }
 
         return nil
     }
 
-    /// Derives a plain-text representation for text, richText, and url types.
-    private func derivePlainText(from pasteboard: NSPasteboard, contentType: ContentType) -> String? {
+    /// Derives a plain-text representation for display and search.
+    private func derivePlainText(from pasteboard: NSPasteboard, contentType: ContentType, rawData: Data) -> String? {
         switch contentType {
+        case .color:
+            // rawData for color is already the hex string
+            return String(data: rawData, encoding: .utf8)
         case .text, .richText, .url:
             return pasteboard.string(forType: .string)
         case .image, .file:
             return nil
         }
+    }
+
+    // MARK: - Helpers
+
+    /// Converts an NSColor to a "#RRGGBB" hex string using sRGB color space.
+    private func hexString(from color: NSColor) -> String? {
+        guard let srgb = color.usingColorSpace(.sRGB) else { return nil }
+        let r = UInt8((srgb.redComponent   * 255).rounded(.toNearestOrAwayFromZero))
+        let g = UInt8((srgb.greenComponent * 255).rounded(.toNearestOrAwayFromZero))
+        let b = UInt8((srgb.blueComponent  * 255).rounded(.toNearestOrAwayFromZero))
+        return String(format: "#%02X%02X%02X", r, g, b)
+    }
+
+    /// Returns true if the image data has an alpha channel.
+    private func imageHasAlpha(data: Data, type: NSPasteboard.PasteboardType) -> Bool {
+        guard let image = NSImage(data: data),
+              let rep = image.representations.first as? NSBitmapImageRep else {
+            return false
+        }
+        return rep.hasAlpha
     }
 }

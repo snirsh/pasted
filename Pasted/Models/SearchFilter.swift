@@ -107,6 +107,7 @@ enum SearchFilter: Hashable, Identifiable {
             case .image:    return "photo"
             case .url:      return "link"
             case .file:     return "doc"
+            case .color:    return "paintpalette"
             }
         case .sourceApp:
             return "app.badge"
