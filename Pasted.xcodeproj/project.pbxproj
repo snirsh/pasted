@@ -63,6 +63,17 @@
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* FuzzyMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2CD3E4F5A6B7C8D9E0F1A2 /* FuzzyMatcher.swift */; };
 		CC3DE4F5A6B7C8D9E0F1A2B3 /* FuzzyMatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4EF5A6B7C8D9E0F1A2B3C4 /* FuzzyMatcherTests.swift */; };
 		EE5FA6B7C8D9E0F1A2B3C4D5 /* StripViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF60B7C8D9E0F1A2B3C4D5E6 /* StripViewModelTests.swift */; };
+		BB0001BB0001BB0001BB0001 /* Pinboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001AA0001AA0001AA0001 /* Pinboard.swift */; };
+		BB0002BB0002BB0002BB0002 /* PinboardEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0002AA0002AA0002AA0002 /* PinboardEntry.swift */; };
+		BB0003BB0003BB0003BB0003 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0003AA0003AA0003AA0003 /* DesignTokens.swift */; };
+		BB0004BB0004BB0004BB0004 /* CodeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0004AA0004AA0004AA0004 /* CodeDetector.swift */; };
+		BB0005BB0005BB0005BB0005 /* TextHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0005AA0005AA0005AA0005 /* TextHighlighter.swift */; };
+		BB0006BB0006BB0006BB0006 /* PinboardTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0006AA0006AA0006AA0006 /* PinboardTabBar.swift */; };
+		BB0007BB0007BB0007BB0007 /* LinkCardContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0007AA0007AA0007AA0007 /* LinkCardContent.swift */; };
+		BB0008BB0008BB0008BB0008 /* DetailContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0008AA0008AA0008AA0008 /* DetailContentView.swift */; };
+		BB0009BB0009BB0009BB0009 /* DetailPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0009AA0009AA0009AA0009 /* DetailPreviewView.swift */; };
+		BB000ABB000ABB000ABB000A /* RecentItemsMenuSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000AAA000AAA000AAA000A /* RecentItemsMenuSection.swift */; };
+		BB000BBB000BBB000BBB000B /* CheckerboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000BAA000BAA000BAA000B /* CheckerboardView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -134,6 +145,17 @@
 		BB2CD3E4F5A6B7C8D9E0F1A2 /* FuzzyMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuzzyMatcher.swift; sourceTree = "<group>"; };
 		DD4EF5A6B7C8D9E0F1A2B3C4 /* FuzzyMatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuzzyMatcherTests.swift; sourceTree = "<group>"; };
 		FF60B7C8D9E0F1A2B3C4D5E6 /* StripViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripViewModelTests.swift; sourceTree = "<group>"; };
+		AA0001AA0001AA0001AA0001 /* Pinboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pinboard.swift; sourceTree = "<group>"; };
+		AA0002AA0002AA0002AA0002 /* PinboardEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinboardEntry.swift; sourceTree = "<group>"; };
+		AA0003AA0003AA0003AA0003 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
+		AA0004AA0004AA0004AA0004 /* CodeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeDetector.swift; sourceTree = "<group>"; };
+		AA0005AA0005AA0005AA0005 /* TextHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextHighlighter.swift; sourceTree = "<group>"; };
+		AA0006AA0006AA0006AA0006 /* PinboardTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinboardTabBar.swift; sourceTree = "<group>"; };
+		AA0007AA0007AA0007AA0007 /* LinkCardContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkCardContent.swift; sourceTree = "<group>"; };
+		AA0008AA0008AA0008AA0008 /* DetailContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailContentView.swift; sourceTree = "<group>"; };
+		AA0009AA0009AA0009AA0009 /* DetailPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailPreviewView.swift; sourceTree = "<group>"; };
+		AA000AAA000AAA000AAA000A /* RecentItemsMenuSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentItemsMenuSection.swift; sourceTree = "<group>"; };
+		AA000BAA000BAA000BAA000B /* CheckerboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckerboardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -178,8 +200,11 @@
 			isa = PBXGroup;
 			children = (
 				BD94FC5454DA929916613ADF /* ClipboardStrip */,
+				CC0002CC0002CC0002CC0002 /* Detail */,
+				CC0003CC0003CC0003CC0003 /* MenuBar */,
 				FF546460228187468AD75BEC /* Preferences */,
 				0C22A9E4FA4646BB4A0B9545 /* Search */,
+				CC0004CC0004CC0004CC0004 /* Shared */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -189,8 +214,11 @@
 			children = (
 				8510CDBDC18D0EDE3B199A15 /* AppBrandColor.swift */,
 				C3D75A0B353C2360219896E0 /* AppIconCache.swift */,
+				AA0004AA0004AA0004AA0004 /* CodeDetector.swift */,
+				AA0003AA0003AA0003AA0003 /* DesignTokens.swift */,
 				4DB7C6C9F37B24FD4C9FCA09 /* KeyboardShortcutManager.swift */,
 				90F0448F7B89604C7B7B60B3 /* PreviewGenerator.swift */,
+				AA0005AA0005AA0005AA0005 /* TextHighlighter.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -238,13 +266,48 @@
 		BD94FC5454DA929916613ADF /* ClipboardStrip */ = {
 			isa = PBXGroup;
 			children = (
+				CC0001CC0001CC0001CC0001 /* CardContent */,
 				E7DF505888B298C7F96B3C37 /* ClipboardItemPreview.swift */,
 				D3FF6F82676C86D15919B61D /* ClipboardStripView.swift */,
+				AA0006AA0006AA0006AA0006 /* PinboardTabBar.swift */,
 				7B500263F757713E2045F63C /* StripNavigationHandler.swift */,
 				D7F797652513167183322348 /* StripPanelController.swift */,
 				7BAF38183DA33D0E1FAB768C /* StripViewModel.swift */,
 			);
 			path = ClipboardStrip;
+			sourceTree = "<group>";
+		};
+		CC0001CC0001CC0001CC0001 /* CardContent */ = {
+			isa = PBXGroup;
+			children = (
+				AA0007AA0007AA0007AA0007 /* LinkCardContent.swift */,
+			);
+			path = CardContent;
+			sourceTree = "<group>";
+		};
+		CC0002CC0002CC0002CC0002 /* Detail */ = {
+			isa = PBXGroup;
+			children = (
+				AA0008AA0008AA0008AA0008 /* DetailContentView.swift */,
+				AA0009AA0009AA0009AA0009 /* DetailPreviewView.swift */,
+			);
+			path = Detail;
+			sourceTree = "<group>";
+		};
+		CC0003CC0003CC0003CC0003 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				AA000AAA000AAA000AAA000A /* RecentItemsMenuSection.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
+		CC0004CC0004CC0004CC0004 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				AA000BAA000BAA000BAA000B /* CheckerboardView.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		C9EDCD55DF335B4FCA57BB27 /* App */ = {
@@ -297,6 +360,8 @@
 				4DE291E64F7CC922A3CE46A1 /* ClipboardItem.swift */,
 				0D949948567717E2E549BAA6 /* DeviceInfo.swift */,
 				0CE949507E6B0715013B5763 /* OCRResult.swift */,
+				AA0001AA0001AA0001AA0001 /* Pinboard.swift */,
+				AA0002AA0002AA0002AA0002 /* PinboardEntry.swift */,
 				E2199FE2A3F64E052AA26341 /* SearchFilter.swift */,
 				DE8D82891AFDC748329864E0 /* SearchQuery.swift */,
 				44329E57E35DA326FDEA25D4 /* SyncRecord.swift */,
@@ -448,6 +513,17 @@
 				2A6CB4E852D056C163FC59B5 /* SyncRecordMapper.swift in Sources */,
 				CB76A41EDE91E1433A184DAB /* SyncState.swift in Sources */,
 				BEFB361DA4E6D233665E4CAD /* SyncStateTracker.swift in Sources */,
+				BB0004BB0004BB0004BB0004 /* CodeDetector.swift in Sources */,
+				BB0008BB0008BB0008BB0008 /* DetailContentView.swift in Sources */,
+				BB0009BB0009BB0009BB0009 /* DetailPreviewView.swift in Sources */,
+				BB0003BB0003BB0003BB0003 /* DesignTokens.swift in Sources */,
+				BB0007BB0007BB0007BB0007 /* LinkCardContent.swift in Sources */,
+				BB0001BB0001BB0001BB0001 /* Pinboard.swift in Sources */,
+				BB0002BB0002BB0002BB0002 /* PinboardEntry.swift in Sources */,
+				BB0006BB0006BB0006BB0006 /* PinboardTabBar.swift in Sources */,
+				BB000ABB000ABB000ABB000A /* RecentItemsMenuSection.swift in Sources */,
+				BB000BBB000BBB000BBB000B /* CheckerboardView.swift in Sources */,
+				BB0005BB0005BB0005BB0005 /* TextHighlighter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
