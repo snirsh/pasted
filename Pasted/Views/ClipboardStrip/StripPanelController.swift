@@ -1,15 +1,6 @@
 import AppKit
 import SwiftUI
-
-// MARK: - Placeholder for ClipboardStripView (created by another agent)
-
-/// Temporary placeholder view until the real ClipboardStripView is implemented.
-private struct ClipboardStripPlaceholder: View {
-    var body: some View {
-        Text("Clipboard Strip")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
+import SwiftData
 
 // MARK: - StripPanelController
 
@@ -151,9 +142,23 @@ final class StripPanelController {
         visualEffectView.layer?.cornerRadius = 16
         visualEffectView.layer?.masksToBounds = true
 
-        // Host the SwiftUI view
-        // Replace ClipboardStripPlaceholder with the real ClipboardStripView once available.
-        let hostingView = NSHostingView(rootView: ClipboardStripPlaceholder())
+        // Host the SwiftUI view with the shared model container injected.
+        // Because this NSPanel lives outside the SwiftUI scene hierarchy,
+        // @Query in ClipboardStripView won't have a modelContainer unless
+        // we explicitly provide one via .modelContainer().
+        let pasteService = self.pasteService
+        let stripView = ClipboardStripView(
+            onPaste: { [weak self] item in
+                pasteService.paste(item)
+                self?.dismiss()
+            },
+            onDismiss: { [weak self] in
+                self?.dismiss()
+            }
+        )
+        .modelContainer(SharedModelContainer.instance)
+
+        let hostingView = NSHostingView(rootView: stripView)
         hostingView.translatesAutoresizingMaskIntoConstraints = false
 
         visualEffectView.translatesAutoresizingMaskIntoConstraints = false

@@ -104,6 +104,8 @@ final class KeyboardShortcutManager {
     /// The underlying CGEvent tap. Exposed internally for the callback to re-enable if needed.
     nonisolated(unsafe) var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var retryCount: Int = 0
+    private static let maxRetries = 5
 
     init(stripPanel: StripPanelController, store: ClipboardStore, pasteService: PasteService) {
         self.stripPanel = stripPanel
@@ -118,6 +120,17 @@ final class KeyboardShortcutManager {
 
         sharedManager = self
 
+        if attemptCreateEventTap() {
+            print("[KeyboardShortcutManager] CGEvent tap created successfully.")
+        } else {
+            // Accessibility permission may not be ready immediately at launch.
+            // Retry a few times with increasing delay.
+            scheduleRetry()
+        }
+    }
+
+    /// Attempts to create the CGEvent tap. Returns true on success.
+    private func attemptCreateEventTap() -> Bool {
         let eventMask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
 
         guard let tap = CGEvent.tapCreate(
@@ -128,8 +141,7 @@ final class KeyboardShortcutManager {
             callback: eventTapCallback,
             userInfo: nil
         ) else {
-            print("[KeyboardShortcutManager] Failed to create CGEvent tap. Accessibility permission required.")
-            return
+            return false
         }
 
         eventTap = tap
@@ -138,6 +150,30 @@ final class KeyboardShortcutManager {
         runLoopSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
+        return true
+    }
+
+    /// Retries CGEvent tap creation with exponential backoff (1s, 2s, 4s, 8s, 16s).
+    private func scheduleRetry() {
+        guard retryCount < Self.maxRetries else {
+            print("[KeyboardShortcutManager] Failed to create CGEvent tap after \(Self.maxRetries) retries. Accessibility permission required — toggle it off and on in System Settings > Privacy & Security > Accessibility.")
+            return
+        }
+
+        let delay = pow(2.0, Double(retryCount)) // 1, 2, 4, 8, 16 seconds
+        retryCount += 1
+        print("[KeyboardShortcutManager] CGEvent tap creation failed (attempt \(retryCount)/\(Self.maxRetries)). Retrying in \(Int(delay))s...")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else { return }
+            if self.eventTap == nil {
+                if self.attemptCreateEventTap() {
+                    print("[KeyboardShortcutManager] CGEvent tap created successfully on retry \(self.retryCount).")
+                } else {
+                    self.scheduleRetry()
+                }
+            }
+        }
     }
 
     func unregisterShortcuts() {
