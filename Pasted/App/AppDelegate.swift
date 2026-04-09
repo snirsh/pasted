@@ -56,6 +56,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showPreferences() {
+        NSApp.activate(ignoringOtherApps: true)
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
