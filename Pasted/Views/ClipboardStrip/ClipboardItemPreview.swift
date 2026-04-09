@@ -83,49 +83,49 @@ struct ClipboardItemPreview: View {
 
     private var textFallback: some View {
         ZStack {
-            Color(nsColor: .textBackgroundColor)
+            Color.white.opacity(0.08)
             VStack(alignment: .leading, spacing: 2) {
                 if let text = item.plainTextContent {
                     Text(String(text.prefix(500)))
                         .font(.system(size: 13, design: .monospaced))
-                        .foregroundStyle(.primary.opacity(0.8))
+                        .foregroundColor(.white.opacity(0.85))
                         .lineLimit(12)
                         .multilineTextAlignment(.leading)
                 } else {
                     Image(systemName: iconName(for: item.contentType))
                         .font(.title2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.white.opacity(0.4))
                 }
             }
-            .padding(6)
+            .padding(8)
         }
     }
 
     private var urlFallback: some View {
         ZStack {
-            Color(nsColor: .textBackgroundColor)
-            VStack(spacing: 4) {
+            Color.white.opacity(0.08)
+            VStack(spacing: 6) {
                 Image(systemName: "link")
-                    .font(.title3)
+                    .font(.title2)
                     .foregroundStyle(.blue)
                 if let text = item.plainTextContent {
                     Text(text)
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(3)
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.7))
+                        .lineLimit(4)
                         .multilineTextAlignment(.center)
                 }
             }
-            .padding(6)
+            .padding(8)
         }
     }
 
     private var iconFallback: some View {
         ZStack {
-            Color(nsColor: .controlBackgroundColor)
+            Color.white.opacity(0.08)
             Image(systemName: iconName(for: item.contentType))
-                .font(.largeTitle)
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 36))
+                .foregroundStyle(.white.opacity(0.4))
         }
     }
 

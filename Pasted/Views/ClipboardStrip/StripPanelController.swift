@@ -29,6 +29,7 @@ final class StripPanelController {
         // Reload items from store each time the strip is shown
         viewModel.reload(from: store)
         viewModel.selectedIndex = 0
+        viewModel.startLiveUpdates()
 
         if panel == nil {
             panel = createPanel()
@@ -56,6 +57,7 @@ final class StripPanelController {
     }
 
     func dismiss() {
+        viewModel.stopLiveUpdates()
         guard let panel else { return }
 
         NSAnimationContext.runAnimationGroup({ context in
