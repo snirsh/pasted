@@ -23,7 +23,7 @@ struct ClipboardStripView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 8) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        ClipboardItemPreview(item: item)
+                        ClipboardItemPreview(item: item, position: index + 1, totalCount: items.count)
                             .frame(width: 120, height: 140)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
@@ -64,6 +64,8 @@ struct ClipboardStripView: View {
         .frame(height: 156)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Clipboard History, \(items.count) items")
         .onAppear {
             navigationHandler.itemCount = items.count
             if !items.isEmpty {

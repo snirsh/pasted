@@ -4,6 +4,8 @@ import SwiftUI
 /// content type badge, source app name, and relative timestamp.
 struct ClipboardItemPreview: View {
     let item: ClipboardItem
+    var position: Int = 0
+    var totalCount: Int = 0
 
     var body: some View {
         VStack(spacing: 4) {
@@ -48,6 +50,7 @@ struct ClipboardItemPreview: View {
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
+        .accessibilityHint("Press Return to paste, Shift Return for plain text")
     }
 
     // MARK: - Preview Content
@@ -156,7 +159,11 @@ struct ClipboardItemPreview: View {
     }
 
     private var accessibilityDescription: String {
-        var parts: [String] = [item.contentType.rawValue]
+        var parts: [String] = []
+        if position > 0 && totalCount > 0 {
+            parts.append("Item \(position) of \(totalCount)")
+        }
+        parts.append(item.contentType.rawValue)
         if let text = item.plainTextContent {
             let snippet = String(text.prefix(50))
             parts.append(snippet)

@@ -48,11 +48,40 @@ final class StripPanelController {
 
         positionPanel(panel)
         selectedIndex = 0
+
+        // Start with panel offset down 20pt and fully transparent
+        var startFrame = panel.frame
+        startFrame.origin.y -= 20
+        panel.setFrame(startFrame, display: false)
+        panel.alphaValue = 0
+
         panel.orderFrontRegardless()
+
+        // Animate slide-up + fade-in
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.15
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            var targetFrame = startFrame
+            targetFrame.origin.y += 20
+            panel.animator().setFrame(targetFrame, display: true)
+            panel.animator().alphaValue = 1
+        })
     }
 
     func dismiss() {
-        panel?.orderOut(nil)
+        guard let panel else { return }
+
+        // Animate slide-down + fade-out, then order out
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.12
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            var targetFrame = panel.frame
+            targetFrame.origin.y -= 20
+            panel.animator().setFrame(targetFrame, display: true)
+            panel.animator().alphaValue = 0
+        }, completionHandler: { [weak panel] in
+            panel?.orderOut(nil)
+        })
     }
 
     // MARK: - Navigation (called from KeyboardShortcutManager)
@@ -77,6 +106,22 @@ final class StripPanelController {
         } catch {
             print("[StripPanelController] Confirm selection failed: \(error)")
         }
+    }
+
+    func confirmSelectionPlainText() {
+        do {
+            let items = try store.fetchRecent(limit: 50)
+            guard selectedIndex < items.count else { return }
+            pasteService.pasteAsPlainText(items[selectedIndex])
+            dismiss()
+        } catch {
+            print("[StripPanelController] Plain text paste failed: \(error)")
+        }
+    }
+
+    /// Selects the item at the given index (0-based) in the strip.
+    func selectIndex(_ index: Int) {
+        selectedIndex = index
     }
 
     // MARK: - Panel Creation

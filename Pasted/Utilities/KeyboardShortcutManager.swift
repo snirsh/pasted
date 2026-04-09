@@ -73,7 +73,11 @@ private func eventTapCallback(
                 manager.stripPanel.selectNext()
                 consumed = true
             case 36: // Return
-                manager.stripPanel.confirmSelection()
+                if hasShift {
+                    manager.stripPanel.confirmSelectionPlainText()
+                } else {
+                    manager.stripPanel.confirmSelection()
+                }
                 consumed = true
             case 53: // Escape
                 manager.stripPanel.dismiss()
@@ -151,16 +155,27 @@ final class KeyboardShortcutManager {
     // MARK: - Quick Paste
 
     /// Pastes the item at the given index (0-based) from the recent clipboard history.
+    /// When the strip is visible, also selects the Nth item before pasting.
     func handleQuickPaste(index: Int, plainText: Bool) {
         do {
             let items = try store.fetchRecent(limit: 9)
             guard index < items.count else { return }
             let item = items[index]
 
+            // When strip is visible, select the item visually before pasting
+            if stripPanel.isVisible {
+                stripPanel.selectIndex(index)
+            }
+
             if plainText {
                 pasteService.pasteAsPlainText(item)
             } else {
                 pasteService.paste(item)
+            }
+
+            // Dismiss strip after quick paste if it was visible
+            if stripPanel.isVisible {
+                stripPanel.dismiss()
             }
         } catch {
             print("[KeyboardShortcutManager] Quick paste failed: \(error)")

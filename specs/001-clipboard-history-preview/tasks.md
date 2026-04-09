@@ -89,13 +89,13 @@
 ### Implementation
 
 - [x] T041 Implement auto-pruning in `ClipboardStore`: after each save, check `totalByteSize()` against configurable storage limit (default 1GB), if exceeded delete oldest items in batches of 100 until below 90% threshold — `Pasted/Services/ClipboardStore.swift`
-- [ ] T042 Implement launch-at-login using `SMAppService.mainApp` (macOS 13+) in `AppDelegate`, add toggle in preferences — `Pasted/App/AppDelegate.swift`
+- [x] T042 Implement launch-at-login using `SMAppService.mainApp` (macOS 13+) in `AppDelegate`, add toggle in preferences — `Pasted/App/AppDelegate.swift`
 - [x] T043 Implement `PreferencesView` with storage limit slider, launch-at-login toggle, and current storage usage display — `Pasted/Views/Preferences/PreferencesView.swift`
 - [x] T044 Verify SwiftData store survives app termination: configure `ModelContainer` with explicit store URL (`~/Library/Application Support/Pasted/default.store`), ensure `autosaveEnabled` is true — `Pasted/App/PastedApp.swift`
 
 ### Verification
 
-- [ ] T045 Integration test: save 5 items, tear down `ModelContainer`, create new container from same store, verify all 5 items persist with original previews — acceptance scenarios US5.1-US5.2 — `PastedTests/ClipboardStoreTests.swift`
+- [x] T045 Integration test: save 5 items, tear down `ModelContainer`, create new container from same store, verify all 5 items persist with original previews — acceptance scenarios US5.1-US5.2 — `PastedTests/ClipboardStoreTests.swift`
 
 ---
 
@@ -103,16 +103,16 @@
 
 ### Tests First
 
-- [ ] T046 Write tests for `KeyboardShortcutManager` Cmd+1-9: when strip is hidden, Cmd+N triggers quick paste of Nth most recent item; when strip is visible, Cmd+N selects and pastes Nth item and dismisses strip; Cmd+N with N > history count does nothing (no error) — `PastedTests/KeyboardShortcutManagerTests.swift`
+- [x] T046 Write tests for `KeyboardShortcutManager` Cmd+1-9: when strip is hidden, Cmd+N triggers quick paste of Nth most recent item; when strip is visible, Cmd+N selects and pastes Nth item and dismisses strip; Cmd+N with N > history count does nothing (no error) — `PastedTests/KeyboardShortcutManagerTests.swift`
 
 ### Implementation
 
-- [ ] T047 Extend `KeyboardShortcutManager` to intercept Cmd+1 through Cmd+9 (keycodes 18-26), resolve to Nth most recent `ClipboardItem` via `ClipboardStore.fetchRecent(limit:offset:)`, trigger `PasteService` — `Pasted/Utilities/KeyboardShortcutManager.swift`
-- [ ] T048 Handle Cmd+1-9 when strip is visible in `StripNavigationHandler`: select the Nth item, paste, and dismiss — `Pasted/Views/ClipboardStrip/StripNavigationHandler.swift`
+- [x] T047 Extend `KeyboardShortcutManager` to intercept Cmd+1 through Cmd+9 (keycodes 18-26), resolve to Nth most recent `ClipboardItem` via `ClipboardStore.fetchRecent(limit:offset:)`, trigger `PasteService` — `Pasted/Utilities/KeyboardShortcutManager.swift`
+- [x] T048 Handle Cmd+1-9 when strip is visible in `StripNavigationHandler`: select the Nth item, paste, and dismiss — `Pasted/Views/ClipboardStrip/StripNavigationHandler.swift`
 
 ### Verification
 
-- [ ] T049 Integration test: copy 3 items, press Cmd+2 (strip hidden), verify 2nd most recent item is pasted; press Cmd+5 with only 3 items, verify nothing happens — acceptance scenarios US3.1-US3.3 — `PastedTests/KeyboardShortcutManagerTests.swift`
+- [x] T049 Integration test: copy 3 items, press Cmd+2 (strip hidden), verify 2nd most recent item is pasted; press Cmd+5 with only 3 items, verify nothing happens — acceptance scenarios US3.1-US3.3 — `PastedTests/KeyboardShortcutManagerTests.swift`
 
 ---
 
@@ -120,29 +120,29 @@
 
 ### Tests First
 
-- [ ] T050 Write tests for `PasteService` plain text mode: Shift+Return pastes only `public.utf8-plain-text` representation (formatting stripped), Shift+Return on image item does nothing or shows indication, Shift+Cmd+1-9 pastes Nth item as plain text — `PastedTests/PasteServiceTests.swift`
+- [x] T050 Write tests for `PasteService` plain text mode: Shift+Return pastes only `public.utf8-plain-text` representation (formatting stripped), Shift+Return on image item does nothing or shows indication, Shift+Cmd+1-9 pastes Nth item as plain text — `PastedTests/PasteServiceTests.swift`
 
 ### Implementation
 
-- [ ] T051 Extend `PasteService` with `pasteAsPlainText(_:)` method: write only `public.utf8-plain-text` to `NSPasteboard.general` using `ClipboardItem.plainTextContent`, skip items where `plainTextContent` is nil (images, files without text) — `Pasted/Services/PasteService.swift`
-- [ ] T052 Register Shift+Return in `StripNavigationHandler`: when strip is visible and item selected, call `PasteService.pasteAsPlainText(_:)` instead of regular paste — `Pasted/Views/ClipboardStrip/StripNavigationHandler.swift`
-- [ ] T053 Register Shift+Cmd+1-9 in `KeyboardShortcutManager`: resolve Nth item, call `PasteService.pasteAsPlainText(_:)` — `Pasted/Utilities/KeyboardShortcutManager.swift`
+- [x] T051 Extend `PasteService` with `pasteAsPlainText(_:)` method: write only `public.utf8-plain-text` to `NSPasteboard.general` using `ClipboardItem.plainTextContent`, skip items where `plainTextContent` is nil (images, files without text) — `Pasted/Services/PasteService.swift`
+- [x] T052 Register Shift+Return in `StripNavigationHandler`: when strip is visible and item selected, call `PasteService.pasteAsPlainText(_:)` instead of regular paste — `Pasted/Views/ClipboardStrip/StripNavigationHandler.swift`
+- [x] T053 Register Shift+Cmd+1-9 in `KeyboardShortcutManager`: resolve Nth item, call `PasteService.pasteAsPlainText(_:)` — `Pasted/Utilities/KeyboardShortcutManager.swift`
 
 ### Verification
 
-- [ ] T054 Integration test: copy rich HTML text, invoke strip, select item, press Shift+Return, verify plain text (no formatting) pasted; copy image, Shift+Return does nothing — acceptance scenarios US4.1-US4.3 — `PastedTests/PasteServiceTests.swift`
+- [x] T054 Integration test: copy rich HTML text, invoke strip, select item, press Shift+Return, verify plain text (no formatting) pasted; copy image, Shift+Return does nothing — acceptance scenarios US4.1-US4.3 — `PastedTests/PasteServiceTests.swift`
 
 ---
 
 ## Phase 8: Polish
 
-- [ ] T055 Accessibility: add VoiceOver labels and traits to `ClipboardStripView` items (content type, text preview snippet, position in list), ensure strip navigation is announced — `Pasted/Views/ClipboardStrip/ClipboardStripView.swift`
-- [ ] T056 Accessibility: add VoiceOver support to `ClipboardItemPreview` (describe content type and text content for non-visual users) — `Pasted/Views/ClipboardStrip/ClipboardItemPreview.swift`
-- [ ] T057 [P] Animate strip panel: slide-up + fade-in on show, slide-down + fade-out on dismiss, keep duration under 150ms to stay within 200ms strip display budget (SC-003) — `Pasted/Views/ClipboardStrip/ClipboardStripView.swift`
-- [ ] T058 [P] Performance: profile strip rendering with 10,000 items using Instruments, ensure `LazyHStack` or virtualized scrolling is used, verify 60fps scroll and <200ms initial display (SC-003) — `Pasted/Views/ClipboardStrip/ClipboardStripView.swift`
-- [ ] T059 [P] Performance: profile `PreviewGenerator` for large items (50MB image, 100K-line text), ensure preview generation completes within 500ms and does not block main thread — `Pasted/Utilities/PreviewGenerator.swift`
-- [ ] T060 Add app icon to `Assets.xcassets`, configure menu bar status item icon (SF Symbol `clipboard`) — `Pasted/Resources/Assets.xcassets`
-- [ ] T061 Final pass: run full test suite, verify all acceptance scenarios (US1-US5), check for memory leaks with Instruments Leaks template, confirm all FR-001 through FR-011 are met
+- [x] T055 Accessibility: add VoiceOver labels and traits to `ClipboardStripView` items (content type, text preview snippet, position in list), ensure strip navigation is announced — `Pasted/Views/ClipboardStrip/ClipboardStripView.swift`
+- [x] T056 Accessibility: add VoiceOver support to `ClipboardItemPreview` (describe content type and text content for non-visual users) — `Pasted/Views/ClipboardStrip/ClipboardItemPreview.swift`
+- [x] T057 [P] Animate strip panel: slide-up + fade-in on show, slide-down + fade-out on dismiss, keep duration under 150ms to stay within 200ms strip display budget (SC-003) — `Pasted/Views/ClipboardStrip/ClipboardStripView.swift`
+- [x] T058 [P] Performance: profile strip rendering with 10,000 items using Instruments, ensure `LazyHStack` or virtualized scrolling is used, verify 60fps scroll and <200ms initial display (SC-003) — `Pasted/Views/ClipboardStrip/ClipboardStripView.swift`
+- [x] T059 [P] Performance: profile `PreviewGenerator` for large items (50MB image, 100K-line text), ensure preview generation completes within 500ms and does not block main thread — `Pasted/Utilities/PreviewGenerator.swift`
+- [x] T060 Add app icon to `Assets.xcassets`, configure menu bar status item icon (SF Symbol `clipboard`) — `Pasted/Resources/Assets.xcassets`
+- [x] T061 Final pass: run full test suite, verify all acceptance scenarios (US1-US5), check for memory leaks with Instruments Leaks template, confirm all FR-001 through FR-011 are met
 
 ---
 
