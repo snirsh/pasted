@@ -86,10 +86,10 @@ struct ClipboardItemPreview: View {
             Color(nsColor: .textBackgroundColor)
             VStack(alignment: .leading, spacing: 2) {
                 if let text = item.plainTextContent {
-                    Text(String(text.prefix(400)))
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.primary.opacity(0.7))
-                        .lineLimit(10)
+                    Text(String(text.prefix(500)))
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundStyle(.primary.opacity(0.8))
+                        .lineLimit(12)
                         .multilineTextAlignment(.leading)
                 } else {
                     Image(systemName: iconName(for: item.contentType))

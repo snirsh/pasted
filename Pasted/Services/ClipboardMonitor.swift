@@ -7,6 +7,7 @@ final class ClipboardMonitor {
     private let store: ClipboardStore
     private var timer: Timer?
     private var lastChangeCount: Int
+    nonisolated(unsafe) var skipNextChange = false
 
     init(store: ClipboardStore) {
         self.store = store
@@ -29,6 +30,12 @@ final class ClipboardMonitor {
         timer = nil
     }
 
+    /// Tell the monitor to ignore the next pasteboard change
+    /// (used when PasteService writes to the pasteboard for pasting).
+    nonisolated func skipNext() {
+        skipNextChange = true
+    }
+
     // MARK: - Polling
 
     private func checkForChanges() {
@@ -36,6 +43,12 @@ final class ClipboardMonitor {
         let currentChangeCount = pasteboard.changeCount
         guard currentChangeCount != lastChangeCount else { return }
         lastChangeCount = currentChangeCount
+
+        // Skip changes we caused (e.g., pasting an item writes to the pasteboard)
+        if skipNextChange {
+            skipNextChange = false
+            return
+        }
 
         guard let (contentType, rawData) = extractContent(from: pasteboard) else { return }
 

@@ -4,69 +4,39 @@ import UniformTypeIdentifiers
 
 /// Injects clipboard items back into the active application via pasteboard write + simulated Cmd+V.
 final class PasteService {
+    /// Set by AppDelegate so we can tell the monitor to skip changes we cause.
+    weak var clipboardMonitor: ClipboardMonitor?
 
     // MARK: - Public API
 
     /// Pastes the item in its original format.
+    /// The item becomes the current clipboard content and is promoted to most recent.
     func paste(_ item: ClipboardItem) {
+        clipboardMonitor?.skipNext()
         let pasteboard = NSPasteboard.general
-        let previousContents = savePasteboard(pasteboard)
-
         writeToPasteboard(pasteboard, data: item.rawData, contentType: item.contentType)
-        simulatePaste()
 
-        // Restore previous pasteboard contents after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.restorePasteboard(pasteboard, contents: previousContents)
-        }
+        // Promote to most recent in clipboard history
+        item.capturedAt = Date()
+
+        simulatePaste()
     }
 
     /// Pastes only the plain-text representation of the item.
+    /// The plain text becomes the current clipboard content.
     func pasteAsPlainText(_ item: ClipboardItem) {
         guard let plainText = item.plainTextContent,
               let textData = plainText.data(using: .utf8) else { return }
 
+        clipboardMonitor?.skipNext()
         let pasteboard = NSPasteboard.general
-        let previousContents = savePasteboard(pasteboard)
-
         pasteboard.clearContents()
         pasteboard.setData(textData, forType: .string)
+
+        // Promote to most recent
+        item.capturedAt = Date()
+
         simulatePaste()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.restorePasteboard(pasteboard, contents: previousContents)
-        }
-    }
-
-    // MARK: - Pasteboard Save / Restore
-
-    private struct PasteboardSnapshot {
-        let items: [[NSPasteboard.PasteboardType: Data]]
-    }
-
-    private func savePasteboard(_ pasteboard: NSPasteboard) -> PasteboardSnapshot {
-        var snapshot: [[NSPasteboard.PasteboardType: Data]] = []
-        for item in pasteboard.pasteboardItems ?? [] {
-            var itemData: [NSPasteboard.PasteboardType: Data] = [:]
-            for type in item.types {
-                if let data = item.data(forType: type) {
-                    itemData[type] = data
-                }
-            }
-            snapshot.append(itemData)
-        }
-        return PasteboardSnapshot(items: snapshot)
-    }
-
-    private func restorePasteboard(_ pasteboard: NSPasteboard, contents: PasteboardSnapshot) {
-        pasteboard.clearContents()
-        for itemData in contents.items {
-            let pbItem = NSPasteboardItem()
-            for (type, data) in itemData {
-                pbItem.setData(data, forType: type)
-            }
-            pasteboard.writeObjects([pbItem])
-        }
     }
 
     // MARK: - Pasteboard Write

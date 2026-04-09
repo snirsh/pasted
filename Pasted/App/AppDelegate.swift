@@ -26,6 +26,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         clipboardMonitor?.startMonitoring()
 
         pasteService = PasteService()
+        pasteService?.clipboardMonitor = clipboardMonitor
         stripPanel = StripPanelController(store: clipboardStore!, pasteService: pasteService!)
 
         keyboardShortcutManager = KeyboardShortcutManager(
