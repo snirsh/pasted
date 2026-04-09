@@ -9,14 +9,28 @@ struct ClipboardStripView: View {
     var onDismiss: () -> Void
 
     var body: some View {
-        Group {
-            if viewModel.items.isEmpty {
-                emptyState
-            } else {
-                stripContent
+        VStack(spacing: 0) {
+            SearchBarView(
+                query: $viewModel.searchQuery,
+                availableSourceApps: viewModel.availableSourceApps,
+                focusTrigger: viewModel.focusTrigger
+            )
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
+            Divider()
+                .opacity(0.4)
+
+            Group {
+                if viewModel.items.isEmpty {
+                    emptyState
+                } else {
+                    stripContent
+                }
             }
+            .frame(height: 252)
         }
-        .frame(height: 256)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .contain)
@@ -31,12 +45,13 @@ struct ClipboardStripView: View {
                 LazyHStack(spacing: 10) {
                     ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
                         ClipboardItemPreview(item: item, position: index + 1, totalCount: viewModel.items.count)
-                            .frame(width: 200, height: 240)
+                            .frame(width: 200, height: 236)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(viewModel.selectedIndex == index
-                                            ? Color.accentColor
-                                            : Color.clear, lineWidth: 3)
+                                    .strokeBorder(
+                                        viewModel.selectedIndex == index ? Color.accentColor : Color.clear,
+                                        lineWidth: 3
+                                    )
                             )
                             .id(index)
                             .contentShape(Rectangle())
@@ -60,13 +75,13 @@ struct ClipboardStripView: View {
 
     private var emptyState: some View {
         VStack(spacing: 8) {
-            Image(systemName: "clipboard")
+            Image(systemName: viewModel.searchQuery.isEmpty ? "clipboard" : "magnifyingglass")
                 .font(.system(size: 32))
                 .foregroundStyle(.tertiary)
-            Text("No clipboard history yet")
+            Text(viewModel.searchQuery.isEmpty ? "No clipboard history yet" : "No results")
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
-            Text("Copy something to get started")
+            Text(viewModel.searchQuery.isEmpty ? "Copy something to get started" : "Try a different search")
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
         }

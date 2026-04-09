@@ -91,6 +91,7 @@ final class KeyboardShortcutManager {
     /// Cached strip visibility — written on the main actor, read by the CGEvent callback
     /// without actor isolation so the callback never stalls waiting for the main actor.
     nonisolated(unsafe) var isStripVisible: Bool = false
+
     private var runLoopSource: CFRunLoopSource?
     private var retryCount: Int = 0
     private static let maxRetries = 5
