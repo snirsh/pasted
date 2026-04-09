@@ -67,12 +67,12 @@ struct ClipboardItemPreview: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 40, height: 40)
-                .clipShape(Circle())
-                .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 1)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .shadow(color: .black.opacity(0.35), radius: 3, x: 0, y: 1)
         } else {
-            // Fallback: first letter of app name on frosted circle
+            // Fallback: first letter of app name on frosted rounded square
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: 9)
                     .fill(.white.opacity(0.25))
                     .frame(width: 40, height: 40)
                 Text(item.sourceAppName?.prefix(1).uppercased() ?? "?")
@@ -124,17 +124,13 @@ struct ClipboardItemPreview: View {
     }
 
     private var textContent: some View {
-        GeometryReader { geo in
-            ScrollView {
-                Text(String((item.plainTextContent ?? "").prefix(600)))
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .frame(width: geo.size.width, alignment: .topLeading)
-            }
-            .disabled(true)
-        }
+        Text(String((item.plainTextContent ?? "").prefix(400)))
+            .font(.system(size: 15, design: .monospaced))
+            .foregroundStyle(.white.opacity(0.9))
+            .lineLimit(8)
+            .multilineTextAlignment(.leading)
+            .truncationMode(.tail)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var urlContent: some View {
