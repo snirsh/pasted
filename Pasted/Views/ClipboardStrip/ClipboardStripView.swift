@@ -2,102 +2,84 @@ import SwiftUI
 import SwiftData
 
 /// The main horizontal clipboard strip displaying recent clipboard items.
-/// Activated via the global keyboard shortcut, appearing as a floating strip.
 struct ClipboardStripView: View {
-    @Query(sort: \ClipboardItem.capturedAt, order: .reverse)
-    private var items: [ClipboardItem]
-
-    @Environment(\.modelContext) private var modelContext
-
-    @State private var selectedIndex: Int?
-
-    @StateObject private var navigationHandler = StripNavigationHandler()
+    @ObservedObject var viewModel: StripViewModel
 
     var onPaste: (ClipboardItem) -> Void
     var onDismiss: () -> Void
 
-    // MARK: - Body
-
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 8) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        ClipboardItemPreview(item: item, position: index + 1, totalCount: items.count)
-                            .frame(width: 200, height: 240)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedIndex == index
-                                          ? Color.accentColor.opacity(0.15)
-                                          : Color.clear)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(selectedIndex == index
-                                            ? Color.accentColor
-                                            : Color.clear, lineWidth: 2)
-                            )
-                            .id(index)
-                            .onTapGesture {
-                                selectItem(at: index)
-                            }
-                            .onTapGesture(count: 2) {
-                                selectItem(at: index)
-                                pasteSelected()
-                            }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-            }
-            .onChange(of: selectedIndex) { _, newIndex in
-                if let newIndex {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        proxy.scrollTo(newIndex, anchor: .center)
-                    }
-                }
-            }
-            .onChange(of: navigationHandler.selectedIndex) { _, newIndex in
-                selectedIndex = newIndex
+        Group {
+            if viewModel.items.isEmpty {
+                emptyState
+            } else {
+                stripContent
             }
         }
         .frame(height: 256)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Clipboard History, \(items.count) items")
-        .onAppear {
-            navigationHandler.itemCount = items.count
-            if !items.isEmpty {
-                selectedIndex = 0
-                navigationHandler.selectedIndex = 0
+        .accessibilityLabel("Clipboard History, \(viewModel.items.count) items")
+    }
+
+    // MARK: - Strip Content
+
+    private var stripContent: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 10) {
+                    ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
+                        ClipboardItemPreview(item: item, position: index + 1, totalCount: viewModel.items.count)
+                            .frame(width: 200, height: 240)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(viewModel.selectedIndex == index
+                                          ? Color.accentColor.opacity(0.2)
+                                          : Color.clear)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(viewModel.selectedIndex == index
+                                            ? Color.accentColor
+                                            : Color.clear, lineWidth: 2.5)
+                            )
+                            .id(index)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) {
+                                viewModel.select(at: index)
+                                onPaste(item)
+                            }
+                            .onTapGesture(count: 1) {
+                                viewModel.select(at: index)
+                            }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+            .onChange(of: viewModel.selectedIndex) { _, newIndex in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    proxy.scrollTo(newIndex, anchor: .center)
+                }
             }
         }
-        .onChange(of: items.count) { _, newCount in
-            navigationHandler.itemCount = newCount
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "clipboard")
+                .font(.system(size: 32))
+                .foregroundStyle(.tertiary)
+            Text("No clipboard history yet")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+            Text("Copy something to get started")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
         }
-    }
-
-    // MARK: - Navigation
-
-    func selectNext() {
-        navigationHandler.moveRight()
-        selectedIndex = navigationHandler.selectedIndex
-    }
-
-    func selectPrevious() {
-        navigationHandler.moveLeft()
-        selectedIndex = navigationHandler.selectedIndex
-    }
-
-    func selectItem(at index: Int) {
-        guard index >= 0, index < items.count else { return }
-        selectedIndex = index
-        navigationHandler.selectedIndex = index
-    }
-
-    func pasteSelected() {
-        guard let index = selectedIndex, index < items.count else { return }
-        onPaste(items[index])
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

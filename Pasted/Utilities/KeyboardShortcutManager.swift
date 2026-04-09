@@ -41,27 +41,8 @@ private func eventTapCallback(
         return nil // Consume the event
     }
 
-    // --- Cmd+1-9: Quick paste (original format) ---
-    // Key codes for 1-9: 18, 19, 20, 21, 23, 22, 26, 28, 25
-    let digitKeyCodes: [Int64] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
-    if hasCommand && !hasShift, let index = digitKeyCodes.firstIndex(of: keyCode) {
-        DispatchQueue.main.async {
-            manager.handleQuickPaste(index: index, plainText: false)
-        }
-        return nil
-    }
-
-    // --- Shift+Cmd+1-9: Quick paste (plain text) ---
-    if hasCommand && hasShift, let index = digitKeyCodes.firstIndex(of: keyCode) {
-        DispatchQueue.main.async {
-            manager.handleQuickPaste(index: index, plainText: true)
-        }
-        return nil
-    }
-
     // --- Strip-visible-only shortcuts ---
-    // The CGEvent tap callback runs on the main run loop, so we can safely
-    // assume MainActor isolation to access the strip panel state.
+    // Only intercept keys when the strip overlay is showing.
     var consumed = false
     MainActor.assumeIsolated {
         if manager.stripPanel.isVisible {

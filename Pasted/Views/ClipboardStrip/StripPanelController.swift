@@ -2,15 +2,13 @@ import AppKit
 import SwiftUI
 import SwiftData
 
-// MARK: - StripPanelController
-
 /// Manages the floating NSPanel that hosts the clipboard strip overlay.
 @MainActor
 final class StripPanelController {
     private let store: ClipboardStore
     private let pasteService: PasteService
+    private let viewModel = StripViewModel()
     private var panel: NSPanel?
-    private var selectedIndex: Int = 0
     private var keyMonitor: Any?
 
     var isVisible: Bool {
@@ -25,100 +23,75 @@ final class StripPanelController {
     // MARK: - Panel Lifecycle
 
     func toggle() {
-        if isVisible {
-            dismiss()
-        } else {
-            show()
-        }
+        if isVisible { dismiss() } else { show() }
     }
 
     func show() {
+        // Reload items from store each time the strip is shown
+        viewModel.reload(from: store)
+        viewModel.selectedIndex = 0
+
         if panel == nil {
             panel = createPanel()
         }
         guard let panel else { return }
 
         positionPanel(panel)
-        selectedIndex = 0
 
-        // Start with panel offset down 20pt and fully transparent
+        // Animate in: start offset + transparent
         var startFrame = panel.frame
         startFrame.origin.y -= 20
         panel.setFrame(startFrame, display: false)
         panel.alphaValue = 0
-
         panel.orderFrontRegardless()
 
-        // Install local keyboard monitor for arrow keys, Return, Escape
-        installKeyMonitor()
-
-        // Animate slide-up + fade-in
-        NSAnimationContext.runAnimationGroup({ context in
+        NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.15
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            var targetFrame = startFrame
-            targetFrame.origin.y += 20
-            panel.animator().setFrame(targetFrame, display: true)
+            var target = startFrame
+            target.origin.y += 20
+            panel.animator().setFrame(target, display: true)
             panel.animator().alphaValue = 1
-        })
+        }
+
+        installKeyMonitor()
     }
 
     func dismiss() {
+        removeKeyMonitor()
         guard let panel else { return }
 
-        // Animate slide-down + fade-out, then order out
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.12
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            var targetFrame = panel.frame
-            targetFrame.origin.y -= 20
-            panel.animator().setFrame(targetFrame, display: true)
+            var target = panel.frame
+            target.origin.y -= 20
+            panel.animator().setFrame(target, display: true)
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak panel] in
             panel?.orderOut(nil)
         })
-
-        removeKeyMonitor()
     }
 
-    // MARK: - Navigation (called from KeyboardShortcutManager)
+    // MARK: - Navigation
 
-    func selectPrevious() {
-        guard selectedIndex > 0 else { return }
-        selectedIndex -= 1
-        // Selection state will be driven through the SwiftUI view model in a future update.
-    }
-
-    func selectNext() {
-        selectedIndex += 1
-        // Upper bound will be clamped when the SwiftUI view is wired up.
-    }
+    func selectPrevious() { viewModel.moveLeft() }
+    func selectNext() { viewModel.moveRight() }
 
     func confirmSelection() {
-        do {
-            let items = try store.fetchRecent(limit: 50)
-            guard selectedIndex < items.count else { return }
-            pasteService.paste(items[selectedIndex])
-            dismiss()
-        } catch {
-            print("[StripPanelController] Confirm selection failed: \(error)")
-        }
+        guard let item = viewModel.selectedItem else { return }
+        pasteService.paste(item)
+        dismiss()
     }
 
     func confirmSelectionPlainText() {
-        do {
-            let items = try store.fetchRecent(limit: 50)
-            guard selectedIndex < items.count else { return }
-            pasteService.pasteAsPlainText(items[selectedIndex])
-            dismiss()
-        } catch {
-            print("[StripPanelController] Plain text paste failed: \(error)")
-        }
+        guard let item = viewModel.selectedItem else { return }
+        pasteService.pasteAsPlainText(item)
+        dismiss()
     }
 
-    /// Selects the item at the given index (0-based) in the strip.
     func selectIndex(_ index: Int) {
-        selectedIndex = index
+        viewModel.select(at: index)
     }
 
     // MARK: - Keyboard Monitor
@@ -175,7 +148,6 @@ final class StripPanelController {
         panel.backgroundColor = .clear
         panel.hasShadow = true
 
-        // Visual effect background
         let visualEffectView = NSVisualEffectView()
         visualEffectView.material = .hudWindow
         visualEffectView.state = .active
@@ -184,12 +156,9 @@ final class StripPanelController {
         visualEffectView.layer?.cornerRadius = 16
         visualEffectView.layer?.masksToBounds = true
 
-        // Host the SwiftUI view with the shared model container injected.
-        // Because this NSPanel lives outside the SwiftUI scene hierarchy,
-        // @Query in ClipboardStripView won't have a modelContainer unless
-        // we explicitly provide one via .modelContainer().
         let pasteService = self.pasteService
         let stripView = ClipboardStripView(
+            viewModel: viewModel,
             onPaste: { [weak self] item in
                 pasteService.paste(item)
                 self?.dismiss()
@@ -198,11 +167,9 @@ final class StripPanelController {
                 self?.dismiss()
             }
         )
-        .modelContainer(SharedModelContainer.instance)
 
         let hostingView = NSHostingView(rootView: stripView)
         hostingView.translatesAutoresizingMaskIntoConstraints = false
-
         visualEffectView.translatesAutoresizingMaskIntoConstraints = false
 
         let containerView = NSView()
@@ -215,7 +182,6 @@ final class StripPanelController {
             visualEffectView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             visualEffectView.topAnchor.constraint(equalTo: containerView.topAnchor),
             visualEffectView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-
             hostingView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             hostingView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             hostingView.topAnchor.constraint(equalTo: containerView.topAnchor),
@@ -223,23 +189,18 @@ final class StripPanelController {
         ])
 
         panel.contentView = containerView
-
         return panel
     }
 
     // MARK: - Positioning
 
-    /// Centers the panel horizontally near the bottom of the active screen.
     private func positionPanel(_ panel: NSPanel) {
         guard let screen = NSScreen.main else { return }
-
         let screenFrame = screen.visibleFrame
         let panelWidth = screenFrame.width * 0.8
         let panelHeight: CGFloat = 280
-
         let x = screenFrame.origin.x + (screenFrame.width - panelWidth) / 2
-        let y = screenFrame.origin.y + 48 // 48pt from the bottom of the visible frame
-
+        let y = screenFrame.origin.y + 48
         panel.setFrame(NSRect(x: x, y: y, width: panelWidth, height: panelHeight), display: true)
     }
 }
