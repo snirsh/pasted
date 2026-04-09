@@ -403,6 +403,158 @@ final class ClipboardStoreTests: XCTestCase {
         XCTAssertTrue(texts.contains("persisted 2"))
     }
 
+    // MARK: - Search
+
+    @MainActor
+    func testSearch_emptyQuery_returnsAllItems() throws {
+        let (_, store) = try makeStore()
+        let now = Date()
+
+        try store.save(makeItem(text: "apple", capturedAt: now))
+        try store.save(makeItem(text: "banana", capturedAt: now.addingTimeInterval(1)))
+
+        let results = try store.search(SearchQuery())
+        XCTAssertEqual(results.count, 2)
+    }
+
+    @MainActor
+    func testSearch_withText_returnsMatchingItems() throws {
+        let (_, store) = try makeStore()
+        let now = Date()
+
+        try store.save(makeItem(text: "swift programming", capturedAt: now))
+        try store.save(makeItem(text: "hello world", capturedAt: now.addingTimeInterval(1)))
+
+        let results = try store.search(SearchQuery(text: "swift"))
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.plainTextContent, "swift programming")
+    }
+
+    @MainActor
+    func testSearch_withText_isCaseInsensitive() throws {
+        let (_, store) = try makeStore()
+
+        try store.save(makeItem(text: "Hello World"))
+
+        let results = try store.search(SearchQuery(text: "hello"))
+        XCTAssertEqual(results.count, 1)
+    }
+
+    @MainActor
+    func testSearch_withText_noMatch_returnsEmpty() throws {
+        let (_, store) = try makeStore()
+
+        try store.save(makeItem(text: "hello"))
+
+        let results = try store.search(SearchQuery(text: "zzznomatch"))
+        XCTAssertTrue(results.isEmpty)
+    }
+
+    @MainActor
+    func testSearch_withContentTypeFilter_filtersCorrectly() throws {
+        let (_, store) = try makeStore()
+        let now = Date()
+
+        try store.save(makeItem(text: "text item", capturedAt: now))
+        let urlItem = ClipboardItem(
+            contentType: .url,
+            rawData: Data("https://example.com".utf8),
+            plainTextContent: "https://example.com",
+            capturedAt: now.addingTimeInterval(1)
+        )
+        try store.save(urlItem)
+
+        let results = try store.search(SearchQuery(filters: [.contentType(.text)]))
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.contentType, .text)
+    }
+
+    @MainActor
+    func testSearch_returnsNewestFirst() throws {
+        let (_, store) = try makeStore()
+        let now = Date()
+
+        try store.save(makeItem(text: "older", capturedAt: now.addingTimeInterval(-10)))
+        try store.save(makeItem(text: "newer", capturedAt: now))
+
+        let results = try store.search(SearchQuery(text: ""))
+        XCTAssertEqual(results.first?.plainTextContent, "newer")
+    }
+
+    // MARK: - Distinct Source Apps
+
+    @MainActor
+    func testDistinctSourceApps_returnsUniqueApps() throws {
+        let (_, store) = try makeStore()
+        let now = Date()
+
+        let safari1 = ClipboardItem(
+            contentType: .text, rawData: Data("a".utf8),
+            plainTextContent: "a", sourceAppBundleID: "com.apple.safari",
+            sourceAppName: "Safari", capturedAt: now
+        )
+        let safari2 = ClipboardItem(
+            contentType: .text, rawData: Data("b".utf8),
+            plainTextContent: "b", sourceAppBundleID: "com.apple.safari",
+            sourceAppName: "Safari", capturedAt: now.addingTimeInterval(1)
+        )
+        let terminal = ClipboardItem(
+            contentType: .text, rawData: Data("c".utf8),
+            plainTextContent: "c", sourceAppBundleID: "com.apple.Terminal",
+            sourceAppName: "Terminal", capturedAt: now.addingTimeInterval(2)
+        )
+
+        try store.save(safari1)
+        try store.save(safari2)
+        try store.save(terminal)
+
+        let apps = try store.distinctSourceApps()
+        XCTAssertEqual(apps.count, 2)
+        let bundleIDs = Set(apps.map(\.bundleID))
+        XCTAssertTrue(bundleIDs.contains("com.apple.safari"))
+        XCTAssertTrue(bundleIDs.contains("com.apple.Terminal"))
+    }
+
+    @MainActor
+    func testDistinctSourceApps_sortedAlphabetically() throws {
+        let (_, store) = try makeStore()
+        let now = Date()
+
+        let zapp = ClipboardItem(
+            contentType: .text, rawData: Data("z".utf8),
+            plainTextContent: "z", sourceAppBundleID: "com.z.app",
+            sourceAppName: "Zephyr", capturedAt: now
+        )
+        let aapp = ClipboardItem(
+            contentType: .text, rawData: Data("a".utf8),
+            plainTextContent: "a", sourceAppBundleID: "com.a.app",
+            sourceAppName: "Alpha", capturedAt: now.addingTimeInterval(1)
+        )
+
+        try store.save(zapp)
+        try store.save(aapp)
+
+        let apps = try store.distinctSourceApps()
+        XCTAssertEqual(apps.count, 2)
+        XCTAssertEqual(apps[0].name, "Alpha")
+        XCTAssertEqual(apps[1].name, "Zephyr")
+    }
+
+    @MainActor
+    func testDistinctSourceApps_itemsWithoutSourceApp_excluded() throws {
+        let (_, store) = try makeStore()
+
+        let noApp = ClipboardItem(
+            contentType: .text, rawData: Data("x".utf8),
+            plainTextContent: "x", sourceAppBundleID: nil,
+            sourceAppName: nil
+        )
+        try store.save(noApp)
+
+        let apps = try store.distinctSourceApps()
+        XCTAssertTrue(apps.isEmpty)
+    }
+
     @MainActor
     func testPersistencePreservesAllFields() throws {
         let (container, store) = try makeStore()

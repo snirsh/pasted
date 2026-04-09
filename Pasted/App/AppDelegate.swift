@@ -34,6 +34,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             store: clipboardStore!,
             pasteService: pasteService!
         )
+        // Give the strip panel a back-reference so it can update the keyboard manager's
+        // visibility cache without the CGEvent callback needing to touch the main actor.
+        stripPanel?.keyboardManager = keyboardShortcutManager
         keyboardShortcutManager?.registerShortcuts()
 
         // Initialize iCloud sync engine lazily — only when user enables it.

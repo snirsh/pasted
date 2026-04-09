@@ -2,7 +2,11 @@ import SwiftData
 import Foundation
 
 /// Executes search queries against the clipboard history using SwiftData predicates.
-/// Combines text search, content type, source app, and date range filters with AND logic.
+/// Content type and date filters are applied in SQL.
+/// Text search is applied post-fetch via FuzzyMatcher for subsequence-aware relevance ranking.
+/// Source app filtering is applied in-memory: SwiftData cannot generate valid SQL
+/// for `optional ?? ""` in the LHS of an IN predicate (generates TERNARY which
+/// SQLite rejects). Post-filtering in Swift is correct and avoids the crash.
 @MainActor
 final class SearchEngine {
     private let modelContext: ModelContext
@@ -24,22 +28,42 @@ final class SearchEngine {
 
         let searchText = query.hasTextQuery ? query.text.trimmingCharacters(in: .whitespaces) : nil
         let contentTypes = query.contentTypeFilters
-        let sourceApps = query.sourceAppFilters.map(\.bundleID)
         let dateStart = query.dateRangeFilter?.startDate
         let dateEnd = query.dateRangeFilter?.endDate
 
-        // Build a compound predicate combining all active filters with AND logic.
-        // SwiftData's #Predicate macro requires all branches to be known at compile time,
-        // so we enumerate the combinations of active filter types.
         descriptor.predicate = buildPredicate(
-            searchText: searchText,
             contentTypes: contentTypes,
-            sourceApps: sourceApps,
             dateStart: dateStart,
             dateEnd: dateEnd
         )
 
-        return try modelContext.fetch(descriptor)
+        var results = try modelContext.fetch(descriptor)
+
+        // Post-filter by source app in Swift.
+        // SQLite cannot handle `TERNARY(field != nil, field, "") IN (list)` on the LHS,
+        // so we skip this dimension in the SQL predicate and apply it here instead.
+        let sourceAppBundleIDs = query.sourceAppFilters.map(\.bundleID)
+        if !sourceAppBundleIDs.isEmpty {
+            results = results.filter { item in
+                guard let id = item.sourceAppBundleID else { return false }
+                return sourceAppBundleIDs.contains(id)
+            }
+        }
+
+        // Post-filter and rank by fuzzy text match.
+        // Text is excluded from SQL to enable subsequence matching and relevance scoring.
+        // Items with no plainTextContent (e.g. images) are excluded when a text query is active.
+        if let text = searchText, !text.isEmpty {
+            let scored = results.compactMap { item -> (ClipboardItem, Int)? in
+                guard let content = item.plainTextContent else { return nil }
+                let s = FuzzyMatcher.scoreMultiWord(text, in: content)
+                return s > 0 ? (item, s) : nil
+            }
+            // Stable sort: higher score first; ties preserve the existing date-descending order.
+            results = scored.sorted { $0.1 > $1.1 }.map { $0.0 }
+        }
+
+        return results
     }
 
     /// Returns distinct source apps found in the clipboard history.
@@ -71,81 +95,31 @@ final class SearchEngine {
         return try modelContext.fetch(descriptor)
     }
 
-    /// Builds a predicate from the active filter combination.
-    /// Each filter dimension is optional; active dimensions combine with AND.
+    /// Builds a SQL predicate for content type and date filters.
+    /// Text search and source app are intentionally excluded — both are post-filtered in Swift.
     private func buildPredicate(
-        searchText: String?,
         contentTypes: [ContentType],
-        sourceApps: [String],
         dateStart: Date?,
         dateEnd: Date?
     ) -> Predicate<ClipboardItem> {
-        let hasText = searchText != nil
         let hasContentType = !contentTypes.isEmpty
-        let hasSourceApp = !sourceApps.isEmpty
         let hasDate = dateStart != nil && dateEnd != nil
 
-        // We need to handle the combinatorial explosion of optional filters.
-        // SwiftData #Predicate requires compile-time known expressions.
-        switch (hasText, hasContentType, hasSourceApp, hasDate) {
-        // --- Single filters ---
-        case (true, false, false, false):
-            let text = searchText!
-            return #Predicate<ClipboardItem> { item in
-                item.plainTextContent?.localizedStandardContains(text) == true
-            }
-
-        case (false, true, false, false):
+        switch (hasContentType, hasDate) {
+        case (true, false):
             let rawTypes = contentTypes.map(\.rawValue)
             return #Predicate<ClipboardItem> { item in
                 rawTypes.contains(item.contentTypeRaw)
             }
 
-        case (false, false, true, false):
-            return #Predicate<ClipboardItem> { item in
-                sourceApps.contains(item.sourceAppBundleID ?? "")
-            }
-
-        case (false, false, false, true):
+        case (false, true):
             let start = dateStart!
             let end = dateEnd!
             return #Predicate<ClipboardItem> { item in
                 item.capturedAt >= start && item.capturedAt <= end
             }
 
-        // --- Two filters ---
-        case (true, true, false, false):
-            let text = searchText!
-            let rawTypes = contentTypes.map(\.rawValue)
-            return #Predicate<ClipboardItem> { item in
-                item.plainTextContent?.localizedStandardContains(text) == true
-                && rawTypes.contains(item.contentTypeRaw)
-            }
-
-        case (true, false, true, false):
-            let text = searchText!
-            return #Predicate<ClipboardItem> { item in
-                item.plainTextContent?.localizedStandardContains(text) == true
-                && sourceApps.contains(item.sourceAppBundleID ?? "")
-            }
-
-        case (true, false, false, true):
-            let text = searchText!
-            let start = dateStart!
-            let end = dateEnd!
-            return #Predicate<ClipboardItem> { item in
-                item.plainTextContent?.localizedStandardContains(text) == true
-                && item.capturedAt >= start && item.capturedAt <= end
-            }
-
-        case (false, true, true, false):
-            let rawTypes = contentTypes.map(\.rawValue)
-            return #Predicate<ClipboardItem> { item in
-                rawTypes.contains(item.contentTypeRaw)
-                && sourceApps.contains(item.sourceAppBundleID ?? "")
-            }
-
-        case (false, true, false, true):
+        case (true, true):
             let rawTypes = contentTypes.map(\.rawValue)
             let start = dateStart!
             let end = dateEnd!
@@ -154,70 +128,7 @@ final class SearchEngine {
                 && item.capturedAt >= start && item.capturedAt <= end
             }
 
-        case (false, false, true, true):
-            let start = dateStart!
-            let end = dateEnd!
-            return #Predicate<ClipboardItem> { item in
-                sourceApps.contains(item.sourceAppBundleID ?? "")
-                && item.capturedAt >= start && item.capturedAt <= end
-            }
-
-        // --- Three filters ---
-        case (true, true, true, false):
-            let text = searchText!
-            let rawTypes = contentTypes.map(\.rawValue)
-            return #Predicate<ClipboardItem> { item in
-                item.plainTextContent?.localizedStandardContains(text) == true
-                && rawTypes.contains(item.contentTypeRaw)
-                && sourceApps.contains(item.sourceAppBundleID ?? "")
-            }
-
-        case (true, true, false, true):
-            let text = searchText!
-            let rawTypes = contentTypes.map(\.rawValue)
-            let start = dateStart!
-            let end = dateEnd!
-            return #Predicate<ClipboardItem> { item in
-                item.plainTextContent?.localizedStandardContains(text) == true
-                && rawTypes.contains(item.contentTypeRaw)
-                && item.capturedAt >= start && item.capturedAt <= end
-            }
-
-        case (true, false, true, true):
-            let text = searchText!
-            let start = dateStart!
-            let end = dateEnd!
-            return #Predicate<ClipboardItem> { item in
-                item.plainTextContent?.localizedStandardContains(text) == true
-                && sourceApps.contains(item.sourceAppBundleID ?? "")
-                && item.capturedAt >= start && item.capturedAt <= end
-            }
-
-        case (false, true, true, true):
-            let rawTypes = contentTypes.map(\.rawValue)
-            let start = dateStart!
-            let end = dateEnd!
-            return #Predicate<ClipboardItem> { item in
-                rawTypes.contains(item.contentTypeRaw)
-                && sourceApps.contains(item.sourceAppBundleID ?? "")
-                && item.capturedAt >= start && item.capturedAt <= end
-            }
-
-        // --- All four filters ---
-        case (true, true, true, true):
-            let text = searchText!
-            let rawTypes = contentTypes.map(\.rawValue)
-            let start = dateStart!
-            let end = dateEnd!
-            return #Predicate<ClipboardItem> { item in
-                item.plainTextContent?.localizedStandardContains(text) == true
-                && rawTypes.contains(item.contentTypeRaw)
-                && sourceApps.contains(item.sourceAppBundleID ?? "")
-                && item.capturedAt >= start && item.capturedAt <= end
-            }
-
-        // --- No filters (should not reach here, but handle gracefully) ---
-        case (false, false, false, false):
+        case (false, false):
             return #Predicate<ClipboardItem> { _ in true }
         }
     }

@@ -260,6 +260,132 @@ final class SearchEngineTests: XCTestCase {
         XCTAssertEqual(results[2].plainTextContent, "oldest")
     }
 
+    // MARK: - Fuzzy Search Integration
+
+    @MainActor
+    func testFuzzySearch_subsequenceMatch_hwr() throws {
+        let (_, engine, context) = try makeEngine()
+
+        let item = makeItem(text: "Hello World")
+        context.insert(item)
+        try context.save()
+
+        // "hwr" chars appear in order in "Hello World"
+        let results = try engine.search(SearchQuery(text: "hwr"))
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.plainTextContent, "Hello World")
+    }
+
+    @MainActor
+    func testFuzzySearch_subsequenceMatch_nflx() throws {
+        let (_, engine, context) = try makeEngine()
+
+        let item = makeItem(text: "Netflix account password")
+        context.insert(item)
+        try context.save()
+
+        let results = try engine.search(SearchQuery(text: "nflx"))
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.plainTextContent, "Netflix account password")
+    }
+
+    @MainActor
+    func testFuzzySearch_exactRanksAboveFuzzy() throws {
+        let (_, engine, context) = try makeEngine()
+
+        let now = Date()
+        // Fuzzy match is newer but exact match should rank higher
+        let fuzzyItem = makeItem(text: "network and flux capacity", capturedAt: now.addingTimeInterval(10))
+        let exactItem = makeItem(text: "netflix password", capturedAt: now)
+        context.insert(fuzzyItem)
+        context.insert(exactItem)
+        try context.save()
+
+        let results = try engine.search(SearchQuery(text: "netflix"))
+        XCTAssertEqual(results.count, 1) // "network and flux" doesn't contain subsequence 'n','e','t','f','l','i','x'... wait
+        // Actually "network and flux capacity" — does "netflix" appear as subsequence?
+        // n(etwork) - e - t - (no f... wait: n-e-t-w-o-r-k-space-a-n-d-space-f-l-u-x
+        // n=yes, e=yes, t=yes, f=yes(pos 12), l=yes(pos 13), i=no... 'i' is not in "network and flux capacity"
+        // So "netflix" does NOT match "network and flux capacity" → only exactItem matches
+        XCTAssertEqual(results.first?.plainTextContent, "netflix password")
+    }
+
+    @MainActor
+    func testFuzzySearch_exactRanksAboveSubsequence_whenBothMatch() throws {
+        let (_, engine, context) = try makeEngine()
+
+        let now = Date()
+        // Both match "net", but one is exact word, other is subsequence
+        let subsequenceItem = makeItem(text: "noticed everything today", capturedAt: now.addingTimeInterval(10))
+        let exactItem = makeItem(text: "netflix stream", capturedAt: now)
+        context.insert(subsequenceItem)
+        context.insert(exactItem)
+        try context.save()
+
+        let results = try engine.search(SearchQuery(text: "net"))
+        // Both should match, exact word prefix "net" in "netflix" should rank above subsequence
+        XCTAssertEqual(results.count, 2)
+        XCTAssertEqual(results.first?.plainTextContent, "netflix stream")
+    }
+
+    @MainActor
+    func testFuzzySearch_multiWord_requiresBothTerms() throws {
+        let (_, engine, context) = try makeEngine()
+
+        let now = Date()
+        let bothTerms = makeItem(text: "hello world greeting", capturedAt: now)
+        let oneTerm = makeItem(text: "hello everyone", capturedAt: now.addingTimeInterval(1))
+        context.insert(bothTerms)
+        context.insert(oneTerm)
+        try context.save()
+
+        let results = try engine.search(SearchQuery(text: "hello world"))
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.plainTextContent, "hello world greeting")
+    }
+
+    @MainActor
+    func testFuzzySearch_imageItemsExcluded_whenTextQueryActive() throws {
+        let (_, engine, context) = try makeEngine()
+
+        let now = Date()
+        let textItem = makeItem(text: "hello world", capturedAt: now)
+        let imageItem = ClipboardItem(
+            contentType: .image,
+            rawData: Data([0xFF, 0xD8]),
+            capturedAt: now.addingTimeInterval(1)
+        )
+        context.insert(textItem)
+        context.insert(imageItem)
+        try context.save()
+
+        let results = try engine.search(SearchQuery(text: "hello"))
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.plainTextContent, "hello world")
+    }
+
+    @MainActor
+    func testFuzzySearch_noTextQuery_preservesDateOrder() throws {
+        let (_, engine, context) = try makeEngine()
+
+        let now = Date()
+        let old = makeItem(text: "old item", capturedAt: now.addingTimeInterval(-100))
+        let mid = makeItem(text: "middle item", capturedAt: now.addingTimeInterval(-50))
+        let newest = makeItem(text: "newest item", capturedAt: now)
+
+        context.insert(old)
+        context.insert(mid)
+        context.insert(newest)
+        try context.save()
+
+        // Filter-only query (no text) — date order must be preserved
+        let results = try engine.search(SearchQuery(filters: [.contentType(.text)]))
+        XCTAssertEqual(results.count, 3)
+        XCTAssertEqual(results[0].plainTextContent, "newest item")
+        XCTAssertEqual(results[1].plainTextContent, "middle item")
+        XCTAssertEqual(results[2].plainTextContent, "old item")
+    }
+
     // MARK: - Distinct Source Apps
 
     @MainActor

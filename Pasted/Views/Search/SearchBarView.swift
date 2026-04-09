@@ -8,6 +8,9 @@ struct SearchBarView: View {
     /// Available source apps for the filter picker, supplied by the parent.
     var availableSourceApps: [(bundleID: String, name: String)] = []
 
+    /// Incrementing this value auto-focuses the search field (used when the strip opens).
+    var focusTrigger: Int = 0
+
     @State private var showFilterPicker = false
     @FocusState private var isSearchFieldFocused: Bool
 
@@ -83,10 +86,11 @@ struct SearchBarView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(isSearchFieldFocused ? Color.accentColor.opacity(0.5) : Color.gray.opacity(0.2), lineWidth: 1)
         )
-        .onKeyPress(characters: CharacterSet(charactersIn: "f"), phases: .down) { keyPress in
-            guard keyPress.modifiers.contains(.command) else { return .ignored }
-            isSearchFieldFocused = true
-            return .handled
+        .onChange(of: focusTrigger) { _, _ in
+            // Auto-focus when the strip opens; small delay ensures the panel is key first
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                isSearchFieldFocused = true
+            }
         }
     }
 }
