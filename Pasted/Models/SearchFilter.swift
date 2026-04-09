@@ -27,11 +27,11 @@ enum DateRange: Hashable, Identifiable {
         case .today:
             return calendar.startOfDay(for: now)
         case .yesterday:
-            return calendar.startOfDay(for: calendar.date(byAdding: .day, value: -1, to: now)!)
+            return calendar.startOfDay(for: calendar.date(byAdding: .day, value: -1, to: now) ?? now)
         case .lastSevenDays:
-            return calendar.startOfDay(for: calendar.date(byAdding: .day, value: -7, to: now)!)
+            return calendar.startOfDay(for: calendar.date(byAdding: .day, value: -7, to: now) ?? now)
         case .lastThirtyDays:
-            return calendar.startOfDay(for: calendar.date(byAdding: .day, value: -30, to: now)!)
+            return calendar.startOfDay(for: calendar.date(byAdding: .day, value: -30, to: now) ?? now)
         case .custom(let start, _):
             return start
         }

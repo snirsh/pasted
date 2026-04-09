@@ -20,8 +20,9 @@ test: generate
 # Install to /Applications
 install: build
 	@echo "Installing Pasted.app to /Applications..."
+	@pkill -x Pasted 2>/dev/null || true
 	@BUILT=$$(xcodebuild -project Pasted.xcodeproj -scheme Pasted -configuration Release -showBuildSettings 2>/dev/null | grep ' BUILT_PRODUCTS_DIR' | awk '{print $$3}'); \
-	cp -R "$$BUILT/Pasted.app" /Applications/Pasted.app
+	rm -rf /Applications/Pasted.app && cp -R "$$BUILT/Pasted.app" /Applications/Pasted.app
 	@echo "Installed! Launch Pasted from /Applications or Spotlight."
 	@echo ""
 	@echo "IMPORTANT: Grant Accessibility permission:"

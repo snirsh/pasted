@@ -2,6 +2,15 @@ import AppKit
 import SwiftUI
 import SwiftData
 
+/// NSPanel subclass that allows becoming key window.
+/// .nonactivatingPanel alone prevents clicks from activating the app, but also
+/// blocks canBecomeKey — meaning text fields never get focus. This subclass
+/// re-enables key status so SwiftUI @FocusState and text input work correctly.
+private final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
+
 /// Manages the floating NSPanel that hosts the clipboard strip overlay.
 @MainActor
 final class StripPanelController {
@@ -9,6 +18,13 @@ final class StripPanelController {
     private let pasteService: PasteService
     private let viewModel = StripViewModel()
     private var panel: NSPanel?
+
+    /// The app that was frontmost before we showed the strip.
+    /// Restored when the strip is dismissed so the user's context is not lost.
+    private var previousApp: NSRunningApplication?
+
+    /// Back-reference to the keyboard manager so we can update its visibility cache.
+    weak var keyboardManager: KeyboardShortcutManager?
 
     var isVisible: Bool {
         panel?.isVisible ?? false
@@ -26,6 +42,9 @@ final class StripPanelController {
     }
 
     func show() {
+        // Remember where focus was so we can restore it on dismiss
+        previousApp = NSWorkspace.shared.frontmostApplication
+
         // Reload items from store each time the strip is shown
         viewModel.reload(from: store)
         viewModel.selectedIndex = 0
@@ -43,7 +62,15 @@ final class StripPanelController {
         startFrame.origin.y -= 20
         panel.setFrame(startFrame, display: false)
         panel.alphaValue = 0
-        panel.orderFrontRegardless()
+        keyboardManager?.isStripVisible = true
+
+        // makeKeyAndOrderFront makes the panel key so @FocusState and text fields work.
+        // Since this is an LSUIElement (menu-bar-only) app, activating it has no
+        // visible effect on the dock or app switcher.
+        panel.makeKeyAndOrderFront(nil)
+
+        // Signal SearchBarView to auto-focus after the panel is key
+        viewModel.focusTrigger += 1
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.15
@@ -53,11 +80,17 @@ final class StripPanelController {
             panel.animator().setFrame(target, display: true)
             panel.animator().alphaValue = 1
         }
-
     }
 
     func dismiss() {
+        keyboardManager?.isStripVisible = false
         viewModel.stopLiveUpdates()
+        viewModel.searchQuery = SearchQuery()
+
+        // Restore focus to the app the user was in before opening the strip
+        previousApp?.activate()
+        previousApp = nil
+
         guard let panel else { return }
 
         NSAnimationContext.runAnimationGroup({ context in
@@ -96,7 +129,7 @@ final class StripPanelController {
     // MARK: - Panel Creation
 
     private func createPanel() -> NSPanel {
-        let panel = NSPanel(
+        let panel = KeyablePanel(
             contentRect: .zero,
             styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
@@ -161,7 +194,7 @@ final class StripPanelController {
         guard let screen = NSScreen.main else { return }
         let screenFrame = screen.visibleFrame
         let panelWidth = screenFrame.width * 0.8
-        let panelHeight: CGFloat = 280
+        let panelHeight: CGFloat = 320
         let x = screenFrame.origin.x + (screenFrame.width - panelWidth) / 2
         let y = screenFrame.origin.y + 48
         panel.setFrame(NSRect(x: x, y: y, width: panelWidth, height: panelHeight), display: true)

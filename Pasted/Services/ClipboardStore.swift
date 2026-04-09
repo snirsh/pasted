@@ -66,6 +66,17 @@ final class ClipboardStore {
         return items.reduce(0) { $0 + $1.byteSize }
     }
 
+    /// Search items matching the given query using SearchEngine.
+    private lazy var searchEngine = SearchEngine(modelContext: modelContext)
+
+    func search(_ query: SearchQuery) throws -> [ClipboardItem] {
+        try searchEngine.search(query)
+    }
+
+    func distinctSourceApps() throws -> [(bundleID: String, name: String)] {
+        try searchEngine.distinctSourceApps()
+    }
+
     /// Total number of items in the store.
     func count() throws -> Int {
         let descriptor = FetchDescriptor<ClipboardItem>()
