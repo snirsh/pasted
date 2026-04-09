@@ -10,6 +10,7 @@ enum ContentType: String, Codable, CaseIterable {
     case image
     case url
     case file
+    case color
 }
 
 /// Sync status for a clipboard item (003-icloud-sync).
@@ -45,6 +46,15 @@ final class ClipboardItem {
     var capturedAt: Date
     var byteSize: Int64
 
+    /// True if the image has an alpha channel (transparency).
+    /// Used to show a checkerboard background behind transparent images.
+    var hasAlpha: Bool = false
+
+    /// Pinboard entries that reference this item.
+    /// Populated automatically by SwiftData via the PinboardEntry.item inverse relationship.
+    @Relationship(inverse: \PinboardEntry.item)
+    var pinboardEntries: [PinboardEntry] = []
+
     // MARK: - Sync Fields (003-icloud-sync)
 
     /// Current sync status for this item.
@@ -63,6 +73,7 @@ final class ClipboardItem {
         sourceAppName: String? = nil,
         capturedAt: Date = Date(),
         byteSize: Int64? = nil,
+        hasAlpha: Bool = false,
         syncStatus: SyncStatus = .local,
         cloudRecordName: String? = nil
     ) {
@@ -76,6 +87,7 @@ final class ClipboardItem {
         self.sourceAppName = sourceAppName
         self.capturedAt = capturedAt
         self.byteSize = byteSize ?? Int64(rawData.count)
+        self.hasAlpha = hasAlpha
         self.syncStatus = syncStatus
         self.cloudRecordName = cloudRecordName
     }

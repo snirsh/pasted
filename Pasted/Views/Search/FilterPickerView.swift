@@ -143,6 +143,7 @@ struct FilterPickerView: View {
         case .image:    return "photo"
         case .url:      return "link"
         case .file:     return "doc"
+        case .color:    return "paintpalette"
         }
     }
 }

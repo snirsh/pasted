@@ -56,6 +56,9 @@ final class PasteService {
             type = .URL
         case .file:
             type = .fileURL
+        case .color:
+            // Color items store the hex string as UTF-8 — paste as plain text
+            type = .string
         }
 
         pasteboard.setData(data, forType: type)

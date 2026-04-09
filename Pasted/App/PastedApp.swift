@@ -10,7 +10,9 @@ enum SharedModelContainer {
             OCRResult.self,
             AppExclusion.self,
             SyncState.self,
-            DeviceInfo.self
+            DeviceInfo.self,
+            Pinboard.self,
+            PinboardEntry.self
         ])
 
         // Store at ~/Library/Application Support/Pasted/default.store
@@ -42,6 +44,13 @@ struct PastedApp: App {
 
     var body: some Scene {
         MenuBarExtra("Pasted", systemImage: "clipboard") {
+            RecentItemsMenuSection(
+                store: appDelegate.clipboardStore,
+                pasteService: appDelegate.pasteService
+            )
+
+            Divider()
+
             Button("Show Clipboard History") {
                 appDelegate.toggleStrip()
             }

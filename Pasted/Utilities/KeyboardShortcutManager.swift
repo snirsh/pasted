@@ -71,6 +71,9 @@ private func eventTapCallback(
     case 53: // Escape
         DispatchQueue.main.async { manager.stripPanel.dismiss() }
         return nil
+    case 49: // Space — toggle detail preview
+        DispatchQueue.main.async { manager.stripPanel.togglePreview() }
+        return nil
     default:
         return Unmanaged.passRetained(event)
     }

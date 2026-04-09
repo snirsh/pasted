@@ -45,6 +45,7 @@ final class StripNavigationHandler: ObservableObject {
         case dismiss
         case paste
         case pastePlainText
+        case togglePreview
     }
 
     /// Processes an NSEvent key-down and returns the resulting action.
@@ -98,6 +99,10 @@ final class StripNavigationHandler: ObservableObject {
                 selectLast()
             }
             return .none
+
+        // Space (keyCode 49) — toggle detail preview
+        case 49:
+            return .togglePreview
 
         default:
             return .none
