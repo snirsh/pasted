@@ -7,8 +7,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var clipboardMonitor: ClipboardMonitor?
     private var keyboardShortcutManager: KeyboardShortcutManager?
     private var stripPanel: StripPanelController?
-    private var clipboardStore: ClipboardStore?
-    private var pasteService: PasteService?
+    private(set) var clipboardStore: ClipboardStore?
+    private(set) var pasteService: PasteService?
     private var syncEngine: SyncEngine?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -27,7 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         pasteService = PasteService()
         pasteService?.clipboardMonitor = clipboardMonitor
-        stripPanel = StripPanelController(store: clipboardStore!, pasteService: pasteService!)
+        stripPanel = StripPanelController(store: clipboardStore!, pasteService: pasteService!, modelContext: context)
 
         keyboardShortcutManager = KeyboardShortcutManager(
             stripPanel: stripPanel!,
