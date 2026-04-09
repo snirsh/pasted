@@ -24,7 +24,7 @@ struct ClipboardStripView: View {
                 LazyHStack(spacing: 8) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         ClipboardItemPreview(item: item, position: index + 1, totalCount: items.count)
-                            .frame(width: 120, height: 140)
+                            .frame(width: 200, height: 240)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(selectedIndex == index
@@ -61,7 +61,7 @@ struct ClipboardStripView: View {
                 selectedIndex = newIndex
             }
         }
-        .frame(height: 156)
+        .frame(height: 256)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .contain)

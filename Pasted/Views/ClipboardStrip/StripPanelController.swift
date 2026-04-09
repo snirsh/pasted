@@ -11,6 +11,7 @@ final class StripPanelController {
     private let pasteService: PasteService
     private var panel: NSPanel?
     private var selectedIndex: Int = 0
+    private var keyMonitor: Any?
 
     var isVisible: Bool {
         panel?.isVisible ?? false
@@ -48,6 +49,9 @@ final class StripPanelController {
 
         panel.orderFrontRegardless()
 
+        // Install local keyboard monitor for arrow keys, Return, Escape
+        installKeyMonitor()
+
         // Animate slide-up + fade-in
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.15
@@ -73,6 +77,8 @@ final class StripPanelController {
         }, completionHandler: { [weak panel] in
             panel?.orderOut(nil)
         })
+
+        removeKeyMonitor()
     }
 
     // MARK: - Navigation (called from KeyboardShortcutManager)
@@ -113,6 +119,42 @@ final class StripPanelController {
     /// Selects the item at the given index (0-based) in the strip.
     func selectIndex(_ index: Int) {
         selectedIndex = index
+    }
+
+    // MARK: - Keyboard Monitor
+
+    private func installKeyMonitor() {
+        removeKeyMonitor()
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.isVisible else { return event }
+            switch Int(event.keyCode) {
+            case 123: // Left arrow
+                self.selectPrevious()
+                return nil
+            case 124: // Right arrow
+                self.selectNext()
+                return nil
+            case 36: // Return
+                if event.modifierFlags.contains(.shift) {
+                    self.confirmSelectionPlainText()
+                } else {
+                    self.confirmSelection()
+                }
+                return nil
+            case 53: // Escape
+                self.dismiss()
+                return nil
+            default:
+                return event
+            }
+        }
+    }
+
+    private func removeKeyMonitor() {
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+            self.keyMonitor = nil
+        }
     }
 
     // MARK: - Panel Creation
@@ -193,7 +235,7 @@ final class StripPanelController {
 
         let screenFrame = screen.visibleFrame
         let panelWidth = screenFrame.width * 0.8
-        let panelHeight: CGFloat = 180
+        let panelHeight: CGFloat = 280
 
         let x = screenFrame.origin.x + (screenFrame.width - panelWidth) / 2
         let y = screenFrame.origin.y + 48 // 48pt from the bottom of the visible frame

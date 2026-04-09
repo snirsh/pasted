@@ -44,6 +44,9 @@ targets:
       path: Pasted/Pasted.entitlements
     info:
       path: Pasted/Info.plist
+      properties:
+        LSUIElement: true
+        NSHumanReadableCopyright: "Copyright © 2026 Pasted Contributors. MIT License."
     dependencies: []
 
   PastedTests:

@@ -9,34 +9,34 @@ struct ClipboardItemPreview: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            // Preview area: 120 x 100
+            // Preview area
             ZStack(alignment: .topTrailing) {
                 previewContent
-                    .frame(width: 112, height: 92)
+                    .frame(width: 184, height: 170)
                     .clipped()
                     .cornerRadius(6)
 
                 // Content type badge
                 Image(systemName: iconName(for: item.contentType))
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .padding(4)
+                    .padding(5)
                     .background(.ultraThinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .padding(4)
             }
-            .frame(width: 112, height: 92)
+            .frame(width: 184, height: 170)
 
             // Metadata area: ~40pt
             VStack(spacing: 2) {
                 Text(item.sourceAppName ?? "Unknown")
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
                 Text(relativeTime(from: item.capturedAt))
-                    .font(.system(size: 9))
+                    .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -86,10 +86,10 @@ struct ClipboardItemPreview: View {
             Color(nsColor: .textBackgroundColor)
             VStack(alignment: .leading, spacing: 2) {
                 if let text = item.plainTextContent {
-                    Text(String(text.prefix(200)))
-                        .font(.system(size: 9, design: .monospaced))
+                    Text(String(text.prefix(400)))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.primary.opacity(0.7))
-                        .lineLimit(6)
+                        .lineLimit(10)
                         .multilineTextAlignment(.leading)
                 } else {
                     Image(systemName: iconName(for: item.contentType))
