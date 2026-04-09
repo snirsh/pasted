@@ -31,7 +31,7 @@ install: build
 clean:
 	xcodebuild -project Pasted.xcodeproj -scheme Pasted clean 2>/dev/null || true
 	rm -rf build/ DerivedData/ .build/
-	rm -f Pasted.xcodeproj
+	rm -rf Pasted.xcodeproj
 
 # Quick start
 setup: generate
