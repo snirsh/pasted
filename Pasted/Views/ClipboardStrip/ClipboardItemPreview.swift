@@ -39,12 +39,12 @@ struct ClipboardItemPreview: View {
                 // Type + timestamp
                 VStack(alignment: .leading, spacing: 2) {
                     Text(contentTypeLabel)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
 
                     Text(relativeTime(from: item.capturedAt))
-                        .font(.system(size: 10, weight: .regular))
+                        .font(.system(size: 11, weight: .regular))
                         .foregroundStyle(.white.opacity(0.75))
                         .lineLimit(1)
                 }
@@ -66,16 +66,17 @@ struct ClipboardItemPreview: View {
             Image(nsImage: nsImage)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 36, height: 36)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .frame(width: 40, height: 40)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 1)
         } else {
-            // Fallback circle with first letter of app name
+            // Fallback: first letter of app name on frosted circle
             ZStack {
-                RoundedRectangle(cornerRadius: 8)
+                Circle()
                     .fill(.white.opacity(0.25))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 40)
                 Text(item.sourceAppName?.prefix(1).uppercased() ?? "?")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(.white)
             }
         }
@@ -125,9 +126,9 @@ struct ClipboardItemPreview: View {
     private var textContent: some View {
         GeometryReader { geo in
             ScrollView {
-                Text(String((item.plainTextContent ?? "").prefix(800)))
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.85))
+                Text(String((item.plainTextContent ?? "").prefix(600)))
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(nil)
                     .multilineTextAlignment(.leading)
                     .frame(width: geo.size.width, alignment: .topLeading)
@@ -143,7 +144,7 @@ struct ClipboardItemPreview: View {
                 .foregroundStyle(Color(hex: 0x5AC8FA))
             if let text = item.plainTextContent {
                 Text(text)
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.7))
                     .lineLimit(5)
                     .multilineTextAlignment(.center)
@@ -164,16 +165,16 @@ struct ClipboardItemPreview: View {
     private var footer: some View {
         HStack {
             Text(metadataLabel)
-                .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.4))
+                .font(.system(size: 11))
+                .foregroundStyle(.white.opacity(0.45))
                 .lineLimit(1)
 
             Spacer()
 
             if position > 0 {
                 Text("\(position)")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.45))
             }
         }
         .padding(.horizontal, 10)
