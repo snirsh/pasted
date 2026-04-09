@@ -1,11 +1,10 @@
 import SwiftUI
 import SwiftData
 
-@main
-struct PastedApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-
-    var sharedModelContainer: ModelContainer = {
+/// Single shared ModelContainer for the entire app.
+/// Both PastedApp and AppDelegate use this to avoid schema conflicts.
+enum SharedModelContainer {
+    static let instance: ModelContainer = {
         let schema = Schema([
             ClipboardItem.self,
             OCRResult.self,
@@ -33,6 +32,13 @@ struct PastedApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+}
+
+@main
+struct PastedApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    var sharedModelContainer: ModelContainer = SharedModelContainer.instance
 
     var body: some Scene {
         MenuBarExtra("Pasted", systemImage: "clipboard") {

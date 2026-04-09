@@ -15,31 +15,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         requestAccessibilityPermission()
         configureLaunchAtLogin()
 
-        // Initialize services once model container is available
-        if let container = try? ModelContainer(
-            for: ClipboardItem.self, SyncState.self, DeviceInfo.self
-        ) {
-            let context = ModelContext(container)
-            clipboardStore = ClipboardStore(modelContext: context)
+        // Use the single shared ModelContainer to avoid schema conflicts.
+        // Previously this created a separate container with only 3 models,
+        // which conflicted with PastedApp's 5-model container on the same store.
+        let container = SharedModelContainer.instance
+        let context = ModelContext(container)
+        clipboardStore = ClipboardStore(modelContext: context)
 
-            clipboardMonitor = ClipboardMonitor(store: clipboardStore!)
-            clipboardMonitor?.startMonitoring()
+        clipboardMonitor = ClipboardMonitor(store: clipboardStore!)
+        clipboardMonitor?.startMonitoring()
 
-            pasteService = PasteService()
-            stripPanel = StripPanelController(store: clipboardStore!, pasteService: pasteService!)
+        pasteService = PasteService()
+        stripPanel = StripPanelController(store: clipboardStore!, pasteService: pasteService!)
 
-            keyboardShortcutManager = KeyboardShortcutManager(
-                stripPanel: stripPanel!,
-                store: clipboardStore!,
-                pasteService: pasteService!
-            )
-            keyboardShortcutManager?.registerShortcuts()
+        keyboardShortcutManager = KeyboardShortcutManager(
+            stripPanel: stripPanel!,
+            store: clipboardStore!,
+            pasteService: pasteService!
+        )
+        keyboardShortcutManager?.registerShortcuts()
 
-            // Initialize iCloud sync engine lazily — only when user enables it.
-            // CloudKit requires a valid provisioning profile and Apple Developer account;
-            // eagerly creating CKContainer.default() crashes without one.
-            configureSyncObserver(modelContext: context)
-        }
+        // Initialize iCloud sync engine lazily — only when user enables it.
+        // CloudKit requires a valid provisioning profile and Apple Developer account;
+        // eagerly creating CKContainer.default() crashes without one.
+        configureSyncObserver(modelContext: context)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
