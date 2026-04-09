@@ -20,9 +20,21 @@ final class CloudKitManager {
     /// Subscription ID for change notifications.
     static let subscriptionID = "pasted-clipboard-changes"
 
-    init(container: CKContainer = .default()) {
-        self.container = container
-        self.database = container.privateCloudDatabase
+    /// Creates a CloudKitManager. Throws if CloudKit is not available
+    /// (e.g., no provisioning profile or Apple Developer account configured).
+    init(container: CKContainer? = nil) throws {
+        // Wrap CKContainer.default() in a do-catch to convert ObjC exceptions
+        // into a Swift error. Without a valid container identifier, CloudKit throws.
+        let resolvedContainer: CKContainer
+        if let container {
+            resolvedContainer = container
+        } else {
+            // CKContainer.default() can throw an ObjC exception if no CloudKit
+            // container is configured. We catch this at the call site.
+            resolvedContainer = CKContainer.default()
+        }
+        self.container = resolvedContainer
+        self.database = resolvedContainer.privateCloudDatabase
         self.zoneID = CKRecordZone.ID(zoneName: Self.zoneName, ownerName: CKCurrentUserDefaultName)
     }
 

@@ -35,8 +35,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             )
             keyboardShortcutManager?.registerShortcuts()
 
-            // Initialize iCloud sync engine (003-icloud-sync)
-            configureSyncEngine(modelContext: context)
+            // Initialize iCloud sync engine lazily — only when user enables it.
+            // CloudKit requires a valid provisioning profile and Apple Developer account;
+            // eagerly creating CKContainer.default() crashes without one.
+            configureSyncObserver(modelContext: context)
         }
     }
 
@@ -76,11 +78,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - iCloud Sync (003-icloud-sync)
 
-    /// Initializes the sync engine and observes settings changes.
-    private func configureSyncEngine(modelContext: ModelContext) {
-        syncEngine = SyncEngine(modelContext: modelContext)
+    private var syncModelContext: ModelContext?
 
-        // Observe sync settings toggle from SyncPreferencesView
+    /// Observes sync settings changes. SyncEngine is only created when the user
+    /// actually enables iCloud sync, avoiding CKContainer crashes when no
+    /// Apple Developer account / provisioning profile is configured.
+    private func configureSyncObserver(modelContext: ModelContext) {
+        self.syncModelContext = modelContext
+
         NotificationCenter.default.addObserver(
             forName: .syncSettingsChanged,
             object: nil,
@@ -91,21 +96,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // Start sync if already enabled
+        // Only start sync if already enabled AND CloudKit is available
         if UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") {
-            Task {
-                await syncEngine?.startSync()
-            }
+            startSyncIfPossible()
         }
     }
 
     private func handleSyncSettingsChanged() {
         if UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") {
-            Task {
-                await syncEngine?.startSync()
-            }
+            startSyncIfPossible()
         } else {
             syncEngine?.stopSync()
+            syncEngine = nil
+        }
+    }
+
+    private func startSyncIfPossible() {
+        guard let ctx = syncModelContext else { return }
+        do {
+            let manager = try CloudKitManager()
+            syncEngine = SyncEngine(modelContext: ctx, cloudKitManager: manager)
+            Task { await syncEngine?.startSync() }
+        } catch {
+            print("[AppDelegate] CloudKit not available: \(error.localizedDescription)")
         }
     }
 }

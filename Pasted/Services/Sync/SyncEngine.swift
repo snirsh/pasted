@@ -22,7 +22,7 @@ final class SyncEngine {
     /// Maximum records per CloudKit batch operation.
     private static let batchSize = 400
 
-    init(modelContext: ModelContext, cloudKitManager: CloudKitManager = CloudKitManager()) {
+    init(modelContext: ModelContext, cloudKitManager: CloudKitManager) {
         self.modelContext = modelContext
         self.cloudKitManager = cloudKitManager
         self.stateTracker = SyncStateTracker(modelContext: modelContext)
